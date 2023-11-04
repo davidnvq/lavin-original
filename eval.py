@@ -236,12 +236,17 @@ def main(
     cpu_load: bool = False,
     output_dir: str = None,
     debug: bool = False,
+    wandb_name: str = '',
 ):
     print(max_batch_size, max_seq_len)
     print('use caption: ', use_caption)
     local_rank, world_size = setup_model_parallel()
     if local_rank > 0:
         sys.stdout = open(os.devnull, "w")
+
+    if wandb_name != '':
+        import wandb
+        wandb.init(project="lavin-original", name=wandb_name)
 
     generator = load(ckpt_dir,
                      llm_model,
@@ -346,12 +351,13 @@ def main(
     acc = correct / len(results) * 100
     print('overall accuracy: ', acc)
 
-    current_time = datetime.now().strftime("%M_%S")
+    current_time = str(datetime.now().strftime("%M_%S"))
 
+    filename = f'debug_preds_{current_time}.json' if debug else f'preds_{current_time}.json'
     if output_dir is None:
-        output_file = os.path.join('outputs', 'preds_' + current_time + '.json')
+        output_file = os.path.join('outputs', filename)
     else:
-        output_file = os.path.join(output_dir, 'preds_' + current_time + '.json')
+        output_file = os.path.join(output_dir, filename)
     with open(output_file, 'w') as f:
         json.dump(results, f, indent=4, sort_keys=True)
 
