@@ -1,6 +1,8 @@
 ## Setup
 ### Install Package 
+- Pytorch 1.12
 ```bash
+source ~/anaconda3/etc/profile.d/conda.sh
 conda create -n lavin python=3.9 -y
 conda activate lavin
 
@@ -12,6 +14,20 @@ pip install torch==1.12.1+cu113 torchvision==0.13.1+cu113 torchaudio==0.12.1 --e
 pip install -r requirements.txt
 pip install -e .
 ```
+- Pytorch 2.1
+```bash
+source ~/anaconda3/etc/profile.d/conda.sh
+conda create -n lavin-torch2.1 python=3.9 -y
+conda activate lavin-torch2.1
+
+# install pytorch 2.1
+pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+
+# install dependency and lavin
+pip install -r requirements-torch2.0.txt
+pip install -e .
+```
+
 ### Data Preparation
 - For ScienceQA, please prepare the dataset from the [official repo](https://github.com/lupantech/ScienceQA).
 - For Multimodal Chatbot, download the images in _train2014_ split from [MSCOCO](http://images.cocodataset.org/zips/train2014.zip), and obtain the prepared 52k text-only and 158k text-image instruction-following data from [here](https://drive.google.com/file/d/1gORDPruqwXbgy6NYmhpDXO7t089yzsg3/view?usp=share_link).
