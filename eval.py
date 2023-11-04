@@ -8,6 +8,7 @@ import torch
 import fire
 import time
 import json
+from datetime import datetime
 
 from fairscale.nn.model_parallel.initialize import initialize_model_parallel
 
@@ -82,7 +83,8 @@ def get_scores(result_file, data_file):
     # read result file
     results = json.load(open(result_file))
     num = len(results)
-    assert num == 4241
+    print(f"Number of predictions: {num}!")
+    # assert num == 4241
 
     sqa_data = json.load(open(data_file))
 
@@ -232,6 +234,8 @@ def main(
     use_vicuna=False,
     bits: str = '16bits',
     cpu_load: bool = False,
+    output_dir: str = None,
+    debug: bool = False,
 ):
     print(max_batch_size, max_seq_len)
     print('use caption: ', use_caption)
@@ -283,6 +287,11 @@ def main(
 
     answers = []
     preds = []
+
+    if debug:
+        total_items = total_items // 50
+    print("Total items: ", total_items, "Debug: ", debug)
+
     for i in range(total_items // max_batch_size + 1):
         print('progresses: ', i, ' / ', total_items // max_batch_size + 1)
         batch_qids = qids[i * max_batch_size:(i + 1) * max_batch_size]
@@ -337,14 +346,19 @@ def main(
     acc = correct / len(results) * 100
     print('overall accuracy: ', acc)
 
-    with open('./preds.json', 'w') as f:
-        json.dump(results, f)
+    current_time = datetime.now().strftime("%M_%S")
 
-    scores = get_scores('./preds.json', os.path.join(data_root, 'problems.json'))
-    print(scores)
-    import time
-    with open('gtn4-7B-' + str(time.time()) + '.txt', 'w') as f:
+    if output_dir is None:
+        output_file = os.path.join('outputs', 'preds_' + current_time + '.json')
+    else:
+        output_file = os.path.join(output_dir, 'preds_' + current_time + '.json')
+    with open(output_file, 'w') as f:
+        json.dump(results, f, indent=4, sort_keys=True)
+
+    scores = get_scores(output_file, os.path.join(data_root, 'problems.json'))
+    with open(output_file, 'a') as f:
         f.write(str(scores))
+        print(scores)
 
 
 if __name__ == "__main__":
