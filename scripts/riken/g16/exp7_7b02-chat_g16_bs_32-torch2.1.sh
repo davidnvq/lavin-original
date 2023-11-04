@@ -4,8 +4,8 @@
 #$-ac d=none
 #$-j y
 #$-o $HOME/log/$JOB_ID
-#$ -N exp7_7b02-chat_g16_bs_32-torch1.1
-#$-jc gtn-container_g4.24h
+#$ -N exp7_7b02-chat_g16_bs_32-torch2.1
+#$-jc gs-container_g16.24h
 
 # logging $HOME/log/$JOB_ID
 
@@ -19,11 +19,11 @@ export https_proxy=$MY_PROXY_URL
 export ftp_proxy=$MY_PROXY_URL
 
 source ~/anaconda3/etc/profile.d/conda.sh
-conda activate lavin
+conda activate lavin-torch2.1
 
-export EXPNAME="exp7_7b02-chat_g16_bs_32-torch1.1"
+export EXPNAME="exp7_7b02-chat_g16_bs_32-torch2.1"
 export LLM=llama-2-7b-chat
-torchrun --nproc_per_node 4 --master_port 12340 train.py \
+torchrun --nproc_per_node 16 --master_port 12340 train.py \
     --wandb_enable \
     --llm_model ${LLM} \
     --llama_model_path ./data/weights/ \

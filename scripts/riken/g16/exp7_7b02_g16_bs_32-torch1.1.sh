@@ -5,7 +5,7 @@
 #$-j y
 #$-o $HOME/log/$JOB_ID
 #$ -N exp7_7b02_g16_bs_32-torch1.1
-#$-jc gtn-container_g4.24h
+#$-jc gs-container_g16.24h
 
 # logging $HOME/log/$JOB_ID
 
@@ -23,7 +23,7 @@ conda activate lavin
 
 export EXPNAME="exp7_7b02_g16_bs_32-torch1.1"
 export LLM=llama-2-7b
-torchrun --nproc_per_node 4 --master_port 12340 train.py \
+torchrun --nproc_per_node 16 --master_port 12340 train.py \
     --wandb_enable \
     --llm_model ${LLM} \
     --llama_model_path ./data/weights/ \
