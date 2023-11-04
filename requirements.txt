@@ -8,3 +8,5 @@ tensorboard
 ftfy
 gradio
 bitsandbytes==0.39.0
+ipython
+jupyterlab
