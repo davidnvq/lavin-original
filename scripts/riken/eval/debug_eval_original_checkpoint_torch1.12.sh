@@ -9,7 +9,7 @@ export ftp_proxy=$MY_PROXY_URL
 source ~/anaconda3/etc/profile.d/conda.sh
 conda activate lavin
 
-CUDA_VISIBLE_DEVICES=0 torchrun --nproc_per_node 1 --master_port 12331 eval.py \
+CUDA_VISIBLE_DEVICES=0 torchrun --nproc_per_node 1 --master_port 12232 eval.py \
     --ckpt_dir ./data/weights/ \
     --llm_model 7B \
     --tokenizer_path ./data/weights/tokenizer.model \
