@@ -3,6 +3,7 @@ import argparse
 import datetime
 import json
 import time
+import wandb
 import numpy as np
 from pathlib import Path
 
@@ -117,16 +118,17 @@ def get_args_parser():
     parser.add_argument('--data_root', type=str, default='./data')
     parser.add_argument('--use_caption', action='store_true', help='use image captions or not')
     parser.add_argument('--do_pretrain', action='store_true', help='pre-train on large scale vl instruction')
-
+    parser.add_argument('--wandb_enable', action='store_true', help='to use wandb')
     return parser
 
 
 def main(args):
 
     misc.init_distributed_mode(args)
-    if misc.is_main_process():
-        import wandb
+    if misc.is_main_process() and args.wandb_enable:
+        args.output_dir = args.output_dir[:-1] if args.output_dir.endswith('/') else args.output_dir
         wandb.init(project="lavin-original", name=args.output_dir.split("/")[-1], dir=args.output_dir, config=vars(args))
+        print('Experiment name: {}'.format(wandb.run.name))
 
     print('job dir: {}'.format(os.path.dirname(os.path.realpath(__file__))))
     print("{}".format(args).replace(', ', ',\n'))
