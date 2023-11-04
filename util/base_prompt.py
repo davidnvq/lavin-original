@@ -117,9 +117,8 @@ def create_training_example(format, question, context, choice, answer, lecture, 
     elif input_format == "QCLEM":
         input = f"Question: {question}\nContext: {context}\nBECAUSE: {lecture} {solution}\nOptions: {choice}\n"
 
-    input+="Response:"
-    input='\n'+input
-
+    input += "Response:"
+    input = '\n' + input
 
     # Outputs
     if output_format == 'A':
@@ -151,6 +150,7 @@ def create_training_example(format, question, context, choice, answer, lecture, 
     # print(input)
     return input, output
 
+
 def build_few_shot_prompt(problems, shot_qids, test_qid, args):
 
     examples = []
@@ -164,14 +164,7 @@ def build_few_shot_prompt(problems, shot_qids, test_qid, args):
         lecture = get_lecture_text(problems[qid])
         solution = get_solution_text(problems[qid])
 
-        train_example = create_one_example(args.prompt_format,
-                                           question,
-                                           context,
-                                           choice,
-                                           answer,
-                                           lecture,
-                                           solution,
-                                           test_example=False)
+        train_example = create_one_example(args.prompt_format, question, context, choice, answer, lecture, solution, test_example=False)
         examples.append(train_example)
 
     # test example
@@ -182,20 +175,14 @@ def build_few_shot_prompt(problems, shot_qids, test_qid, args):
     lecture = get_lecture_text(problems[test_qid])
     solution = get_solution_text(problems[test_qid])
 
-    test_example = create_one_example(args.prompt_format,
-                                      question,
-                                      context,
-                                      choice,
-                                      answer,
-                                      lecture,
-                                      solution,
-                                      test_example=True)
+    test_example = create_one_example(args.prompt_format, question, context, choice, answer, lecture, solution, test_example=True)
     examples.append(test_example)
 
     # create the prompt input
     prompt_input = '\n\n'.join(examples)
 
     return prompt_input
+
 
 def build_prompt(problems, test_qid, args):
 
@@ -207,11 +194,5 @@ def build_prompt(problems, test_qid, args):
     lecture = get_lecture_text(problems[test_qid])
     solution = get_solution_text(problems[test_qid])
 
-    test_example = create_training_example(args.prompt_format,
-                                      question,
-                                      context,
-                                      choice,
-                                      answer,
-                                      lecture,
-                                      solution)
+    test_example = create_training_example(args.prompt_format, question, context, choice, answer, lecture, solution)
     return test_example
