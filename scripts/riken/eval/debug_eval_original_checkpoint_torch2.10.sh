@@ -8,6 +8,7 @@ export ftp_proxy=$MY_PROXY_URL
 
 source ~/anaconda3/etc/profile.d/conda.sh
 conda activate lavin-torch2.1
+echo python version: $(which python)
 
 CUDA_VISIBLE_DEVICES=0 torchrun --nproc_per_node 1 --master_port 12821 eval.py \
     --ckpt_dir ./data/weights/ \
@@ -27,5 +28,5 @@ CUDA_VISIBLE_DEVICES=0 torchrun --nproc_per_node 1 --master_port 12821 eval.py \
     --temperature 10.\
     --visual_adapter_type router \
     --output_dir ./outputs/ \
-    --generation_temperature 0.0 
+    --generation_temperature 0.0 \
     --debug
