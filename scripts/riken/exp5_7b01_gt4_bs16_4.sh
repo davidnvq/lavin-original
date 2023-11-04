@@ -3,11 +3,9 @@
 #$-cwd
 #$-ac d=none
 #$-j y
-#$-o $HOME/log/$JOB_ID
+#$-o $HOME/log/exp5_7b01_gt4_bs16_4
 #$ -N exp5_7b01_gt4_bs16_4
 #$-jc gtn-container_g4.24h
-
-# logging $HOME/log/$JOB_ID
 
 # For internet connection
 export MY_PROXY_URL="http://10.1.10.1:8080/"
@@ -23,7 +21,7 @@ conda activate lavin
 
 export EXPNAME="exp5_7b01_gt4_bs16_4"
 
-torchrun --nproc_per_node 4 --master_port 11141 train.py \
+torchrun --nproc_per_node 4 --master_port 19341 train.py \
     --wandb_enable \
     --llm_model 7B \
     --llama_model_path ./data/weights/ \
@@ -44,7 +42,7 @@ torchrun --nproc_per_node 4 --master_port 11141 train.py \
     --temperature 10.\
     --visual_adapter_type router
 
-torchrun --nproc_per_node 1 --master_port 11311 eval.py \
+torchrun --nproc_per_node 1 --master_port 19331 eval.py \
     --ckpt_dir ./data/weights/ \
     --llm_model 7B \
     --tokenizer_path ./data/weights/tokenizer.model \
