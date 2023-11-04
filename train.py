@@ -1,3 +1,4 @@
+from math import log
 import os
 import argparse
 import datetime
@@ -155,11 +156,12 @@ def main(args):
 
     print("Sampler_train = %s" % str(sampler_train))
 
-    if global_rank == 0 and args.log_dir is not None:
-        os.makedirs(args.log_dir, exist_ok=True)
-        log_writer = SummaryWriter(log_dir=args.log_dir)
-    else:
-        log_writer = None
+    log_writer = None
+    # if global_rank == 0 and args.log_dir is not None:
+    #     os.makedirs(args.log_dir, exist_ok=True)
+    #     log_writer = SummaryWriter(log_dir=args.log_dir)
+    # else:
+    #     log_writer = None
 
     data_loader_train = torch.utils.data.DataLoader(
         dataset_train,
