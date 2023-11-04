@@ -18,7 +18,7 @@ from engine import train_one_epoch
 from util.datasets import ScienceQADataSet, InstrcutDataSet
 from lavin.mm_adaptation import LaVIN
 
-import bitsandbytes as bnb
+# import bitsandbytes as bnb # don't need this if you don't use paged optimizer
 
 
 def get_args_parser():
@@ -113,8 +113,8 @@ def get_args_parser():
                         ],
                         help='prompt format template')
     parser.add_argument('--options', type=list, default=["A", "B", "C", "D", "E"])
-    parser.add_argument('--caption_file', type=str, default='../data/captions.json')
-    parser.add_argument('--data_root', type=str, default='../data')
+    parser.add_argument('--caption_file', type=str, default='./data/captions.json')
+    parser.add_argument('--data_root', type=str, default='./data')
     parser.add_argument('--use_caption', action='store_true', help='use image captions or not')
     parser.add_argument('--do_pretrain', action='store_true', help='pre-train on large scale vl instruction')
 
@@ -199,8 +199,8 @@ def main(args):
     param_groups = optim_factory.param_groups_weight_decay(model_without_ddp, args.weight_decay)
 
     #following qlora: apply paged optimizer
-    optimizer = bnb.optim.AdamW32bit(param_groups, lr=args.lr, betas=(0.9, 0.95), is_paged=True)  #
-    # optimizer = torch.optim.AdamW(param_groups, lr=args.lr, betas=(0.9, 0.95))
+    # optimizer = bnb.optim.AdamW32bit(param_groups, lr=args.lr, betas=(0.9, 0.95), is_paged=True)  #
+    optimizer = torch.optim.AdamW(param_groups, lr=args.lr, betas=(0.9, 0.95))
     print(optimizer)
 
     #mixed precision scaler
