@@ -7,3 +7,6 @@ ak: clean
 
 ri: clean
 	rsync -av ./ --exclude="data" --exclude="outputs" --exclude="lavin.egg-info" ri:/home/quang/workspace/lavin-original/
+
+out: clean
+	rsync -av ri:/home/quang/workspace/lavin-original/outputs --exclude="data" --exclude="lavin.egg-info" --exclude="*.pth" ./
