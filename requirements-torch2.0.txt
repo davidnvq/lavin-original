@@ -1,0 +1,11 @@
+fairscale
+fire
+sentencepiece
+transformers
+timm
+tensorboard
+ftfy
+gradio
+ipython
+jupyterlab
+wandb
