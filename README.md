@@ -24,7 +24,7 @@ conda activate lavin-torch2.1
 pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
 
 # install dependency and lavin
-pip install -r requirements-torch2.0.txt
+pip install -r requirements-torch2.1.txt
 pip install -e .
 ```
 
