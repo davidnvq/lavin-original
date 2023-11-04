@@ -234,7 +234,7 @@ def main(
     use_vicuna=False,
     bits: str = '16bits',
     cpu_load: bool = False,
-    output_dir: str = None,
+    output_dir: str = 'outputs',
     debug: bool = False,
     wandb_name: str = '',
 ):
@@ -335,7 +335,7 @@ def main(
                                      n_feats=n_prompt)
 
         for result, prompt in zip(results, prompts):
-            with open(predname, 'a') as f:
+            with open(os.path.join(output_dir, predname), 'a') as f:
                 f.write(prompt + '\n')
                 f.write(result + '\n')
                 f.write('\n')
