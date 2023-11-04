@@ -343,7 +343,7 @@ def main(
     scores = get_scores('./preds.json', os.path.join(data_root, 'problems.json'))
     print(scores)
     import time
-    with open(str(time.time()) + '.txt', 'w') as f:
+    with open('gtn4-7B-' + str(time.time()) + '.txt', 'w') as f:
         f.write(str(scores))
 
 
