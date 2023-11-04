@@ -1,50 +1,12 @@
-![](./assets/logo.png)
-
----
-
-This repository contains the implementation of the NeurIPS 2023 paper:
-> **Cheap and Quick: Efficient Vision-Language Instruction Tuning for Large Language Models** 
-> [[Project Page]](https://luogen1996.github.io/lavin/) [[Paper]](https://arxiv.org/pdf/2305.15023.pdf)  <br>
-> [Gen Luo](https://luogen1996.github.io)<sup>1</sup>,  Yiyi Zhou<sup>12</sup>, [Tianhe Ren](https://rentainhe.github.io)<sup>1</sup>, Shengxin Chen<sup>1</sup>, [Xiaoshuai Sun](https://sites.google.com/view/xssun)<sup>12</sup>, [Rongrong Ji](https://mac.xmu.edu.cn/rrji/)<sup>12</sup><br>
-<sup>1</sup>Media Analytics and Computing Lab, Department of Artificial Intelligence, School of Informatics, Xiamen University  
-> <sup>2</sup>Institute of Artificial Intelligence, Xiamen University 
-
-In this work, we propose a novel and affordable solution for vision-language instruction tuning, namely Mixture-of-Modality Adaptation (MMA). 
-Particularly, MMA is an end-to-end optimization regime, which connects the image encoder  and LLM via lightweight adapters.   Meanwhile, we also   propose a novel routing algorithm in MMA, which can   help the model automatically shifts the  reasoning paths  for single- and multi-modal instructions.  Based on MMA, we develop a large vision-language instructed model called LaVIN, which demonstrates superior training efficiency and  better reasoning ability  than existing multimodal LLMs in various instruction-following tasks.
-
----
-
-<div  align="center">    
-<img src="./assets/teaser-1.png" width="95%">
-</div>
-
-## News 
-- **`2023/09/22`**: 🔥🔥🔥 Our paper is accepted by NeurIPS 2023!
-- **`2023/06/30`**: 🔥🔥🔥 With very limited training data and cost, LaVIN achieves 5-th place of Perception and Cognition on [MME benchmark](https://github.com/BradyFU/Awesome-Multimodal-Large-Language-Models/tree/Evaluation)， outperforming seven existing multimodal LLMs. Evaluation codes are available. 
-- **`2023/06/27`**: 🔥4-bit trainings are available now ! LaVIN-lite can be trained on one 3090 GPU, taking around 9G and 15G GPU memory for the scales of 7B  and 13B , respectively.  Technical details are available  in [知乎](https://zhuanlan.zhihu.com/p/638784025).
-- **`2023/05/29`**: 🔥We released the demo and the pre-trained checkpoint (LLaMA-13B) for multimodal chatbot.
-- **`2023/05/25`**: 🔥We released the code of  **LaVIN: Large Vision-Language Instructed model**, which achieves 89.4 (LaVIN-7B) and 90.8 (LaVIN-13B)  accuracy on ScienceQA! 🔥With the proposed **mixture-of-modality adaptation**, the training time and trainable parameters can be reduced to 1.4 hours and 3.8M, respectively!  Checkout the [paper](https://arxiv.org/pdf/2305.15023.pdf).
-
-## TODO 
-- [x] Release training codes.
-- [x] Release checkpoints and demo.
-- [x] 4-bit training. 
-- [ ] Support more modalities, e.g., audio and video.
-
-## Contents
-- [Setup](#setup)
-- [Fine-tuning](#fine-tuning)
-- [Demo](#demo) 
-- [Model Zoo](#model-zoo)
-
 ## Setup
 ### Install Package 
 ```bash
-conda create -n lavin python=3.8 -y
+conda create -n lavin python=3.9 -y
 conda activate lavin
 
 # install pytorch
-conda install pytorch==1.12.1 torchvision==0.13.1 torchaudio==0.12.1 -c pytorch
+# conda install pytorch==1.12.1 torchvision==0.13.1 torchaudio==0.12.1 -c pytorch
+pip install torch==1.12.1+cu113 torchvision==0.13.1+cu113 torchaudio==0.12.1 --extra-index-url https://download.pytorch.org/whl/cu113
 
 # install dependency and lavin
 pip install -r requirements.txt
