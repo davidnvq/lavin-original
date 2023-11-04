@@ -297,6 +297,10 @@ def main(
         total_items = total_items // 50
     print("Total items: ", total_items, "Debug: ", debug)
 
+    current_time = str(datetime.now().strftime("%M_%S"))
+    filename = f'debug_preds_{current_time}.json' if debug else f'preds_{current_time}.json'
+    predname = f'debug_preds_{current_time}.txt' if debug else f'preds_{current_time}.txt'
+
     for i in range(total_items // max_batch_size + 1):
         print('progresses: ', i, ' / ', total_items // max_batch_size + 1)
         batch_qids = qids[i * max_batch_size:(i + 1) * max_batch_size]
@@ -330,7 +334,12 @@ def main(
                                      top_p=top_p,
                                      n_feats=n_prompt)
 
-        for result in results:
+        for result, prompt in zip(results, prompts):
+            with open(predname, 'a') as f:
+                f.write(prompt + '\n')
+                f.write(result + '\n')
+                f.write('\n')
+
             pred = pattern.findall(result)
 
             if len(pred) >= 1:
@@ -351,9 +360,6 @@ def main(
     acc = correct / len(results) * 100
     print('overall accuracy: ', acc)
 
-    current_time = str(datetime.now().strftime("%M_%S"))
-
-    filename = f'debug_preds_{current_time}.json' if debug else f'preds_{current_time}.json'
     if output_dir is None:
         output_file = os.path.join('outputs', filename)
     else:
@@ -361,10 +367,11 @@ def main(
     with open(output_file, 'w') as f:
         json.dump(results, f, indent=4, sort_keys=True)
 
-    scores = get_scores(output_file, os.path.join(data_root, 'problems.json'))
-    with open(output_file, 'a') as f:
-        f.write(str(scores))
-        print(scores)
+    if not debug:
+        scores = get_scores(output_file, os.path.join(data_root, 'problems.json'))
+        with open(output_file, 'a') as f:
+            f.write(str(scores))
+            print(scores)
 
 
 if __name__ == "__main__":
