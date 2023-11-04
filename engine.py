@@ -6,6 +6,7 @@ import torch
 
 import util.misc as misc
 import util.lr_sched as lr_sched
+import wandb
 
 
 def train_one_epoch(model: torch.nn.Module,
@@ -65,6 +66,9 @@ def train_one_epoch(model: torch.nn.Module,
         loss_value_reduce = misc.all_reduce_mean(loss_value)
         c_loss_value_reduce = misc.all_reduce_mean(c_loss_value)
 
+        if misc.is_main_process() and wandb.run is not None:
+            wandb.log({"c_loss_iter": c_loss_value_reduce, "lr": lr})
+
         if log_writer is not None and (data_iter_step + 1) % accum_iter == 0:
             """ We use epoch_1000x as the x-axis in tensorboard.
             This calibrates different curves when batch size changes.
@@ -76,7 +80,12 @@ def train_one_epoch(model: torch.nn.Module,
     # gather the stats from all processes
     metric_logger.synchronize_between_processes()
     print("Averaged stats:", metric_logger)
-    return {k: meter.global_avg for k, meter in metric_logger.meters.items()}
+
+    stats = {k: meter.global_avg for k, meter in metric_logger.meters.items()}
+    stats.update({"epoch": epoch})
+    if misc.is_main_process() and wandb.run is not None:
+        wandb.log(stats)
+    return stats
 
 
 def val_one_epoch(model: torch.nn.Module,
