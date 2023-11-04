@@ -1,3 +1,6 @@
+source ~/anaconda3/etc/profile.d/conda.sh
+conda activate lavin
+
 torchrun --nproc_per_node 16 --master_port 11141 train.py \
     --wandb_enable \
     --llm_model 7B \
