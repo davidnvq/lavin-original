@@ -136,10 +136,10 @@ def main(**kwargs):
     print("accumulate grad iterations: %d" % args.accum_iter)
     print("effective batch size: %d" % eff_batch_size)
     model = DDP(model, device_ids=[misc.get_rank()], find_unused_parameters=True)
-    model_without_ddp = model.module
+    _model = model.module
 
     # following timm: set wd as 0 for bias and norm layers
-    param_groups = optim_factory.param_groups_weight_decay(model_without_ddp, args.weight_decay)
+    param_groups = optim_factory.param_groups_weight_decay(_model, args.weight_decay)
 
     #following qlora: apply paged optimizer
     # optimizer = bnb.optim.AdamW32bit(param_groups, lr=args.lr, betas=(0.9, 0.95), is_paged=True)  #
@@ -149,7 +149,7 @@ def main(**kwargs):
     #mixed precision scaler
     loss_scaler = NativeScalerWithGradNormCount()
 
-    misc.load_model(args=args, model_without_ddp=model_without_ddp, optimizer=optimizer, loss_scaler=loss_scaler)
+    misc.load_model(args=args, model_without_ddp=_model, optimizer=optimizer, loss_scaler=loss_scaler)
 
     print(f"Start training for {args.epochs} epochs")
     start_time = time.time()
@@ -157,12 +157,12 @@ def main(**kwargs):
         data_loader_train.sampler.set_epoch(epoch)
 
         epoch_time = time.time()
-        train_stats = train_one_epoch(model, data_loader_train, optimizer, device, epoch, loss_scaler, log_writer=log_writer, args=args)
+        train_one_epoch(model, data_loader_train, optimizer, device, epoch, loss_scaler, log_writer=log_writer, args=args)
         epoch_time = time.time() - epoch_time
         print("Epoch time: {}".format(str(datetime.timedelta(seconds=int(epoch_time)))))
 
         if args.output_dir:
-            misc.save_model(args=args, model=model, model_without_ddp=model_without_ddp, optimizer=optimizer, loss_scaler=loss_scaler, epoch=epoch)
+            misc.save_model(args=asdict(args), model=model, model_without_ddp=_model, optimizer=optimizer, loss_scaler=loss_scaler, epoch=epoch)
             print("Saved model and optimizer to {}".format(args.output_dir))
             torch.distributed.barrier()
 
