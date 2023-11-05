@@ -16,6 +16,8 @@ export FTP_PROXY=$MY_PROXY_URL
 export http_proxy=$MY_PROXY_URL
 export https_proxy=$MY_PROXY_URL
 export ftp_proxy=$MY_PROXY_URL
+export JAVA_HOME=$HOME/.jre/jdk-11.0.21+9-jre
+export PATH=$PATH:$JAVA_HOME/bin
 
 source ~/anaconda3/etc/profile.d/conda.sh
 conda activate lavin-torch2.1
