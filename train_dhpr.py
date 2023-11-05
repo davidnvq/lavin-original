@@ -54,6 +54,9 @@ class TrainArgs:
     # Dataset parameters
     dataset: str = 'dhpr'
     debug: bool = False
+    has_speed: bool = False
+    prompt_id: str = 'A'
+    max_words: int = 128
     output_dir: str = './outputs/debug_dhpr'
     device: str = 'cuda'
     seed: int = 0
@@ -97,7 +100,7 @@ def main(**kwargs):
     np.random.seed(seed)
     cudnn.benchmark = True
 
-    dataset_train = DHPRDataset('train', debug=args.debug)
+    dataset_train = DHPRDataset('train', debug=args.debug, has_speed=args.has_speed, prompt_id=args.prompt_id, max_words=args.max_words)
 
     num_tasks = misc.get_world_size()
     global_rank = misc.get_rank()
