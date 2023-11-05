@@ -23,7 +23,7 @@ conda activate lavin-torch2.1
 export CUDA_VISIBLE_DEVICES=0,1,2,3
 
 export EXPNAME="exp1_var_gt4_bs16"
-torchrun --nproc_per_node 4 --master_port 13320 train_dhpr.py \
+torchrun --nproc_per_node 4 --master_port 13210 train_dhpr.py \
     --wandb_enable \
     --llm_model 7B \
     --output_dir ./outputs/${EXPNAME} \
