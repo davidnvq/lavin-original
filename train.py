@@ -49,7 +49,7 @@ def get_args():
 
     # Optimizer parameters
     parser.add_argument('--weight_decay', type=float, default=0.05, help='weight decay (default: 0.05)')
-    parser.add_argument('--lr', type=float, default=1e-4, metavar='LR', help='learning rate (absolute lr)')
+    parser.add_argument('--lr', type=float, default=None, metavar='LR', help='learning rate (absolute lr)')
     parser.add_argument('--clip_grad', type=float, default=None, metavar='clip gradient')
     parser.add_argument('--blr', type=float, default=9e-3, metavar='LR', help='base learning rate: absolute_lr = base_lr * total_batch_size / 256')
     parser.add_argument('--min_lr', type=float, default=0., metavar='LR', help='lower lr bound for cyclic schedulers that hit 0')
