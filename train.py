@@ -23,72 +23,44 @@ from lavin.mm_adaptation import LaVIN
 # import bitsandbytes as bnb # don't need this if you don't use paged optimizer
 
 
-def get_args_parser():
+def get_args():
     parser = argparse.ArgumentParser('MAE pre-training', add_help=False)
-    parser.add_argument('--batch_size', default=64, type=int, help='Batch size per GPU (effective batch size is batch_size * accum_iter * # gpus')
-    parser.add_argument('--epochs', default=400, type=int)
-    parser.add_argument('--bits',
-                        default='16bit',
-                        type=str,
-                        choices=['4bit', '8bit', '16bit'],
-                        help='Quantization bits for training, fp16 by default')
-    parser.add_argument('--accum_iter',
-                        default=1,
-                        type=int,
-                        help='Accumulate gradient iterations (for increasing the effective batch size under memory constraints)')
+    parser.add_argument('--batch_size', default=2, type=int, help='Batch size per GPU (effective batch size is batch_size * accum_iter * # gpus')
+    parser.add_argument('--accum_iter', default=2, type=int)
+    parser.add_argument('--epochs', default=20, type=int)
+    parser.add_argument('--bits', default='16bit')
 
     # Model parameters
-    parser.add_argument('--llama_model_path', default='./llama', type=str, help='path of llama model')
+    parser.add_argument('--llama_model_path', default='./data/weights/', type=str)
+    parser.add_argument('--llm_model', default='100M', type=str)
+    parser.add_argument('--use_vicuna', action='store_true')
+    parser.add_argument('--cpu_load', action='store_true')
 
-    parser.add_argument('--llm_model', default='7B', type=str, metavar='MODEL', help='Name of llm model to train')
-
-    parser.add_argument('--use_vicuna', action='store_true', help='use vicuna weights')
-
-    parser.add_argument('--cpu_load', action='store_true', help='load the model on cpu and avoid OOM on gpu')
-
-    #block is not supported now.
-    parser.add_argument('--adapter_type',
-                        type=str,
-                        default='attn',
-                        metavar='LENGTH',
-                        choices=['block', 'attn'],
-                        help='the insert position  of adapter layer')
-
-    parser.add_argument('--visual_adapter_type',
-                        type=str,
-                        default='normal',
-                        metavar='LENGTH',
-                        choices=['normal', 'router', 'router_block'],
-                        help='the type of adapter layer')
-
+    parser.add_argument('--adapter_type', type=str, default='attn', choices=['block', 'attn'], help='the insert position  of adapter layer')
+    # choices=['normal', 'router', 'router_block']
+    parser.add_argument('--visual_adapter_type', type=str, default='router', help='the type of adapter layer')
     parser.add_argument('--adapter_dim', type=int, default=8, metavar='LENGTH', help='the dims of adapter layer')
-
     parser.add_argument('--hidden_proj', type=int, default=128, metavar='LENGTH', help='the visual adapter dim')
-
     parser.add_argument('--temperature', type=float, default=10., metavar='LENGTH', help='the temperature of router')
-
     parser.add_argument('--n_prompt', type=int, default=10, metavar='LENGTH', help='the length of visual features')
     parser.add_argument('--adapter_scale', type=float, default=1., metavar='LENGTH', help='the scales of adapter layer')
     parser.add_argument('--drop_path', type=float, default=0., metavar='LENGTH', help='drop path')
-
     parser.add_argument('--max_seq_len', type=int, default=512, metavar='LENGTH', help='the maximum sequence length')
 
     # Optimizer parameters
     parser.add_argument('--weight_decay', type=float, default=0.05, help='weight decay (default: 0.05)')
-
-    parser.add_argument('--lr', type=float, default=None, metavar='LR', help='learning rate (absolute lr)')
-    parser.add_argument('--clip_grad', type=float, default=None, metavar='clip gradient', help='clips gradient norm of an iterable of parameters')
-    parser.add_argument('--blr', type=float, default=1e-3, metavar='LR', help='base learning rate: absolute_lr = base_lr * total_batch_size / 256')
+    parser.add_argument('--lr', type=float, default=1e-4, metavar='LR', help='learning rate (absolute lr)')
+    parser.add_argument('--clip_grad', type=float, default=None, metavar='clip gradient')
+    parser.add_argument('--blr', type=float, default=9e-3, metavar='LR', help='base learning rate: absolute_lr = base_lr * total_batch_size / 256')
     parser.add_argument('--min_lr', type=float, default=0., metavar='LR', help='lower lr bound for cyclic schedulers that hit 0')
 
     parser.add_argument('--gradient_checkpointing', action='store_true', help='saving memory costs via gradient_checkpointing')
     parser.add_argument('--warmup_epochs', type=float, default=40, metavar='N', help='epochs to warmup LR')
 
     # Dataset parameters
-    parser.add_argument('--data_path', default='/instruction_dataset/', type=str, help='dataset path')
-
-    parser.add_argument('--output_dir', default='./output_dir', help='path where to save, empty for no saving')
-    parser.add_argument('--log_dir', default='./output_dir', help='path where to tensorboard log')
+    parser.add_argument('--data_path', default='./data/captions.json', type=str, help='dataset path')
+    parser.add_argument('--output_dir', default='./outputs/debug', help='path where to save, empty for no saving')
+    parser.add_argument('--log_dir', default='./outputs/debug', help='path where to tensorboard log')
     parser.add_argument('--device', default='cuda', help='device to use for training / testing')
     parser.add_argument('--seed', default=0, type=int)
     parser.add_argument('--resume', default='', help='resume from checkpoint')
@@ -120,7 +92,9 @@ def get_args_parser():
     parser.add_argument('--use_caption', action='store_true', help='use image captions or not')
     parser.add_argument('--do_pretrain', action='store_true', help='pre-train on large scale vl instruction')
     parser.add_argument('--wandb_enable', action='store_true', help='to use wandb')
-    return parser
+    args = parser.parse_args()
+    args.clip_grad = True
+    return args
 
 
 def main(args):
@@ -157,11 +131,6 @@ def main(args):
     print("Sampler_train = %s" % str(sampler_train))
 
     log_writer = None
-    # if global_rank == 0 and args.log_dir is not None:
-    #     os.makedirs(args.log_dir, exist_ok=True)
-    #     log_writer = SummaryWriter(log_dir=args.log_dir)
-    # else:
-    #     log_writer = None
 
     data_loader_train = torch.utils.data.DataLoader(
         dataset_train,
@@ -226,17 +195,8 @@ def main(args):
 
         if args.output_dir:
             misc.save_model(args=args, model=model, model_without_ddp=model_without_ddp, optimizer=optimizer, loss_scaler=loss_scaler, epoch=epoch)
-
-        log_stats = {
-            **{f'train_{k}': v for k, v in train_stats.items()},
-            'epoch': epoch,
-        }
-
-        if args.output_dir and misc.is_main_process():
-            if log_writer is not None:
-                log_writer.flush()
-            with open(os.path.join(args.output_dir, "log.txt"), mode="a", encoding="utf-8") as f:
-                f.write(json.dumps(log_stats) + "\n")
+            print("Saved model and optimizer to {}".format(args.output_dir))
+            torch.distributed.barrier()
 
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
@@ -245,8 +205,5 @@ def main(args):
 
 if __name__ == '__main__':
 
-    args = get_args_parser()
-    args = args.parse_args()
-    if args.output_dir:
-        Path(args.output_dir).mkdir(parents=True, exist_ok=True)
+    args = get_args()
     main(args)
