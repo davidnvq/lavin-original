@@ -110,6 +110,7 @@ def main(adapter_path="./outputs/exp1_dhpr_7b01_gt4/checkpoint-19.pth", **kwargs
 
     proj_name = os.path.basename(os.path.dirname(eval_args.adapter_path))
     ckpt_name = os.path.basename(eval_args.adapter_path).split('.')[0]
+
     if not eval_args.debug:
         wandb.init(project="LaVIN", name=proj_name + '-' + ckpt_name, dir=os.path.dirname(eval_args.adapter_path), config=asdict(eval_args))
 
@@ -146,7 +147,7 @@ def main(adapter_path="./outputs/exp1_dhpr_7b01_gt4/checkpoint-19.pth", **kwargs
 
         total_batches = len(dataloader)
 
-        if not eval_args.debug:
+        if eval_args.debug:
             total_batches = 8  # len(dataloader)
         for idx, (images, indicators, prompts, gt_answers, image_ids) in zip(range(total_batches), dataloader):
             preds, responses = generator.generate(prompts,
