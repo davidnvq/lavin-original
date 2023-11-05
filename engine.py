@@ -1,3 +1,5 @@
+import time
+import datetime
 import math
 import sys
 from typing import Iterable
@@ -21,21 +23,16 @@ def train_one_epoch(model: torch.nn.Module,
     model.train(True)
     metric_logger = misc.MetricLogger(delimiter="  ")
     metric_logger.add_meter('lr', misc.SmoothedValue(window_size=1, fmt='{value:.6f}'))
-    header = 'Epoch: [{}]'.format(epoch)
-    print_freq = 1
-
     accum_iter = args.accum_iter
 
     optimizer.zero_grad()
 
-    if log_writer is not None:
-        print('log_dir: {}'.format(log_writer.log_dir))
-
     prefix_img = torch.tensor(data_loader.dataset.tokenizer.encode("Image: ", bos=False, eos=False), dtype=torch.int64)
     prefix_nonimg = torch.tensor(data_loader.dataset.tokenizer.encode("Image: N/A", bos=False, eos=False), dtype=torch.int64)
 
-    for data_iter_step, (examples, labels, example_mask, images, indicators) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
-        # we use a per iteration (instead of per epoch) lr scheduler
+    start_time = time.time()
+    total_iters = len(data_loader)
+    for data_iter_step, (examples, labels, example_mask, images, indicators) in enumerate(data_loader):
         if data_iter_step % accum_iter == 0:
             lr_sched.adjust_learning_rate(optimizer, data_iter_step / len(data_loader) + epoch, args)
 
@@ -46,8 +43,15 @@ def train_one_epoch(model: torch.nn.Module,
         loss_value = loss.item()
         c_loss_value = c_loss.item()
 
-        if torch.isnan(loss):
-            print("NaN loss encountered. Skipping this batch.")
+        losses_from_all_ranks = [torch.zeros_like(loss) for _ in range(misc.get_world_size())]
+        torch.distributed.all_gather(losses_from_all_ranks, loss)
+
+        has_nan_loss = False
+        for gather_loss in losses_from_all_ranks:
+            if torch.isnan(gather_loss) or gather_loss.item() > 100:
+                print(f"NaN loss encountered. Skipping this batch. Value: {gather_loss}")
+                has_nan_loss = True
+        if has_nan_loss:
             continue
 
         loss = loss / accum_iter
@@ -63,29 +67,20 @@ def train_one_epoch(model: torch.nn.Module,
         lr = optimizer.param_groups[0]["lr"]
         metric_logger.update(lr=lr)
 
-        loss_value_reduce = misc.all_reduce_mean(loss_value)
+        # loss_value_reduce = misc.all_reduce_mean(loss_value)
         c_loss_value_reduce = misc.all_reduce_mean(c_loss_value)
 
         if misc.is_main_process() and wandb.run is not None:
             wandb.log({"c_loss_iter": c_loss_value_reduce, "lr": lr})
 
-        # if log_writer is not None and (data_iter_step + 1) % accum_iter == 0:
-        #     """ We use epoch_1000x as the x-axis in tensorboard.
-        #     This calibrates different curves when batch size changes.
-        #     """
-        #     epoch_1000x = int((data_iter_step / len(data_loader) + epoch) * 1000)
-        #     log_writer.add_scalar('c_train_loss', c_loss_value_reduce, epoch_1000x)
-        #     log_writer.add_scalar('lr', lr, epoch_1000x)
+        iter_time = time.time() - start_time
+        eta_time = iter_time * (total_iters - data_iter_step - 1)
+        eta_time_str = str(datetime.timedelta(seconds=int(eta_time)))
+        print(f"Epoch: [{epoch}], Iter: [{data_iter_step}/{total_iters}], "
+              f"Eta: {eta_time_str}, Loss: {c_loss_value_reduce:.4f}, lr: {lr:.6f}")
 
-    # gather the stats from all processes
-    metric_logger.synchronize_between_processes()
-    print("Averaged stats:", metric_logger)
-
-    stats = {k: meter.global_avg for k, meter in metric_logger.meters.items()}
-    stats.update({"epoch": epoch})
-    if misc.is_main_process() and wandb.run is not None:
-        wandb.log(stats)
-    return stats
+        start_time = time.time()
+    return None
 
 
 def val_one_epoch(model: torch.nn.Module,
