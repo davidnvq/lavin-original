@@ -52,6 +52,7 @@ class TrainArgs:
     warmup_epochs: float = 2
 
     # Dataset parameters
+    debug: bool = False
     data_path: str = './data/captions.json'
     output_dir: str = './outputs/debug'
     log_dir: str = './outputs/debug'
