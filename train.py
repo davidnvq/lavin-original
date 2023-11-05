@@ -42,23 +42,22 @@ def get_args():
     parser.add_argument('--adapter_dim', type=int, default=8, metavar='LENGTH', help='the dims of adapter layer')
     parser.add_argument('--hidden_proj', type=int, default=128, metavar='LENGTH', help='the visual adapter dim')
     parser.add_argument('--temperature', type=float, default=10., metavar='LENGTH', help='the temperature of router')
-    parser.add_argument('--n_prompt', type=int, default=10, metavar='LENGTH', help='the length of visual features')
+    parser.add_argument('--n_prompt', type=int, default=6, metavar='LENGTH', help='the length of visual features')
     parser.add_argument('--adapter_scale', type=float, default=1., metavar='LENGTH', help='the scales of adapter layer')
     parser.add_argument('--drop_path', type=float, default=0., metavar='LENGTH', help='drop path')
     parser.add_argument('--max_seq_len', type=int, default=512, metavar='LENGTH', help='the maximum sequence length')
 
     # Optimizer parameters
-    parser.add_argument('--weight_decay', type=float, default=0.05, help='weight decay (default: 0.05)')
+    parser.add_argument('--weight_decay', type=float, default=0.02, help='weight decay (default: 0.05)')
     parser.add_argument('--lr', type=float, default=None, metavar='LR', help='learning rate (absolute lr)')
     parser.add_argument('--clip_grad', type=float, default=None, metavar='clip gradient')
     parser.add_argument('--blr', type=float, default=9e-3, metavar='LR', help='base learning rate: absolute_lr = base_lr * total_batch_size / 256')
     parser.add_argument('--min_lr', type=float, default=0., metavar='LR', help='lower lr bound for cyclic schedulers that hit 0')
 
     parser.add_argument('--gradient_checkpointing', action='store_true', help='saving memory costs via gradient_checkpointing')
-    parser.add_argument('--warmup_epochs', type=float, default=40, metavar='N', help='epochs to warmup LR')
+    parser.add_argument('--warmup_epochs', type=float, default=2, metavar='N', help='epochs to warmup LR')
 
     # Dataset parameters
-    parser.add_argument('--debug', action='store_true', help='for debugging')
     parser.add_argument('--data_path', default='./data/captions.json', type=str, help='dataset path')
     parser.add_argument('--output_dir', default='./outputs/debug', help='path where to save, empty for no saving')
     parser.add_argument('--log_dir', default='./outputs/debug', help='path where to tensorboard log')
@@ -76,7 +75,6 @@ def get_args():
     parser.add_argument('--world_size', default=1, type=int, help='number of distributed processes')
     parser.add_argument('--local_rank', default=0, type=int)
     parser.add_argument('--rank', default=0, type=int)
-    parser.add_argument('--dist_url', default='env://', help='url used to set up distributed training')
 
     #datasets
     parser.add_argument('--prompt_format', type=str, default='QCM-ALE', help='prompt format template')
