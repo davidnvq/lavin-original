@@ -41,6 +41,7 @@ class LaVIN_Generator:
         n_feats: int = 3,
         temperature: float = 0.8,
         top_p: float = 0.95,
+        only_response: bool = False,
     ) -> List[str]:
         bsz = len(prompts)
         params = self.model.params
@@ -114,6 +115,7 @@ class LaVIN_Generator:
             prev_pos = cur_pos
 
         decoded = []
+        decoded_responses = []
         for i, t in enumerate(tokens.tolist()):
             # cut to max gen len
             t = t[:len(prompt_tokens[i]) + max_gen_len]
@@ -124,6 +126,12 @@ class LaVIN_Generator:
                 pass
             decoded.append(self.tokenizer.decode(t))
 
+            # cut the prefix prompt
+            response = t[len(prompt_tokens[i]):]
+            decoded_responses.append(self.tokenizer.decode(response))
+
+        if only_response:
+            return decoded, decoded_responses
         return decoded
 
 
