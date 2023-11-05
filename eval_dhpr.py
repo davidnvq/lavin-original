@@ -112,7 +112,7 @@ def main(adapter_path="./outputs/exp1_dhpr_7b01_gt4/checkpoint-19.pth", **kwargs
     ckpt_name = os.path.basename(eval_args.adapter_path).split('.')[0]
 
     if not eval_args.debug:
-        wandb.init(project="LaVIN", name=proj_name + '-' + ckpt_name, dir=os.path.dirname(eval_args.adapter_path), config=asdict(eval_args))
+        wandb.init(project="lavin-original", name=proj_name + '-' + ckpt_name, dir=os.path.dirname(eval_args.adapter_path), config=asdict(eval_args))
 
     checkpoint, tokenizer, model_params = _load_and_redistribute_checkpoint(eval_args.llama_model_path, eval_args.llm_model)
     generator = load(checkpoint, tokenizer, model_params, adapter_checkpoint, eval_args)
@@ -160,7 +160,7 @@ def main(adapter_path="./outputs/exp1_dhpr_7b01_gt4/checkpoint-19.pth", **kwargs
                                                   only_response=True)
 
             for pred, response, image_id, gt_answer in zip(preds, responses, image_ids, gt_answers):
-                ret[image_id] = {'pred': pred, 'gt_answer': gt_answer}
+                ret[image_id] = {'pred': pred, 'response': response, 'gt_answer': gt_answer}
                 print('\n----\n', f'batch_idx {idx}/{total_batches} : image_id: ', image_id)
                 print('response: ', response)
                 print('gt_answer: ', gt_answer)
