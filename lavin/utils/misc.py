@@ -205,15 +205,15 @@ def init_distributed_mode(args):
 
     if 'RANK' in os.environ and 'WORLD_SIZE' in os.environ:
         args.rank = int(os.environ["RANK"])
-        args.gpu = int(os.environ['LOCAL_RANK'])
+        args.local_rank = int(os.environ['LOCAL_RANK'])
         args.world_size = int(os.environ['WORLD_SIZE'])
 
     args.distributed = True
-    torch.cuda.set_device(args.gpu)
+    torch.cuda.set_device(args.local_rank)
 
     port = os.environ['MASTER_PORT']
     dist_url = f'tcp://127.0.0.1:{port}'
-    print('| NCCL distributed init (rank {}): {}, gpu {}'.format(args.rank, dist_url, args.gpu), flush=True)
+    print('| NCCL distributed init (rank {}): {}, local_rank {}'.format(args.rank, dist_url, args.local_rank), flush=True)
 
     torch.distributed.init_process_group(
         backend='NCCL',

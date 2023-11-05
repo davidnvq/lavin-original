@@ -73,24 +73,16 @@ def get_args():
 
     # distributed training parameters
     parser.add_argument('--world_size', default=1, type=int, help='number of distributed processes')
-    parser.add_argument('--local_rank', default=-1, type=int)
-    parser.add_argument('--dist_on_itp', action='store_true')
+    parser.add_argument('--local_rank', default=0, type=int)
+    parser.add_argument('--rank', default=0, type=int)
     parser.add_argument('--dist_url', default='env://', help='url used to set up distributed training')
 
     #datasets
-    parser.add_argument('--prompt_format',
-                        type=str,
-                        default='CQM-A',
-                        choices=[
-                            'CQM-A', 'CQM-LA', 'CQM-EA', 'CQM-LEA', 'CQM-ELA', 'CQM-AL', 'CQM-AE', 'CQM-ALE', 'QCM-A', 'QCM-LA', 'QCM-EA', 'QCM-LEA',
-                            'QCM-ELA', 'QCM-AL', 'QCM-AE', 'QCM-ALE', 'QCML-A', 'QCME-A', 'QCMLE-A', 'QCLM-A', 'QCEM-A', 'QCLEM-A', 'QCML-AE'
-                        ],
-                        help='prompt format template')
+    parser.add_argument('--prompt_format', type=str, default='QCM-ALE', help='prompt format template')
     parser.add_argument('--options', type=list, default=["A", "B", "C", "D", "E"])
     parser.add_argument('--caption_file', type=str, default='./data/captions.json')
     parser.add_argument('--data_root', type=str, default='./data')
     parser.add_argument('--use_caption', action='store_true', help='use image captions or not')
-    parser.add_argument('--do_pretrain', action='store_true', help='pre-train on large scale vl instruction')
     parser.add_argument('--wandb_enable', action='store_true', help='to use wandb')
     args = parser.parse_args()
     args.clip_grad = True
