@@ -128,7 +128,9 @@ class DHPRDataset:
                  box_type='highlight',
                  n_pix=224,
                  prompt_id='A',
-                 has_speed=False):
+                 has_speed=False,
+                 debug=False):
+        self.debug = debug
         self.split = split
         self.root_path = root
         self.max_words = max_words
@@ -225,6 +227,8 @@ class DHPRDataset:
         return example, labels, example_mask, image, indicator
 
     def __len__(self):
+        if self.debug:
+            return 64
         return len(self.anno_data)
 
 
