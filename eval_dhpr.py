@@ -121,7 +121,7 @@ def main(adapter_path="./outputs/exp1_dhpr_7b01_gt4/checkpoint-19.pth", **kwargs
         print('split: ', split)
 
         dataset = DHPRDataset(split=split, max_words=256)
-        dataloader = torch.utils.data.DataLoader(dataset, batch_size=eval_args.batch_size, shuffle=False, num_workers=0, pin_memory=True)
+        dataloader = torch.utils.data.DataLoader(dataset, batch_size=eval_args.batch_size, shuffle=False, num_workers=4, pin_memory=True)
 
         ret = {}
         predictions = []
