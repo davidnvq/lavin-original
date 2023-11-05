@@ -105,9 +105,6 @@ def main(args):
         wandb.init(project="lavin-original", name=args.output_dir.split("/")[-1], dir=args.output_dir, config=vars(args))
         print('Experiment name: {}'.format(wandb.run.name))
 
-    print('job dir: {}'.format(os.path.dirname(os.path.realpath(__file__))))
-    print("{}".format(args).replace(', ', ',\n'))
-
     device = torch.device(args.device)
 
     # fix the seed for reproducibility
@@ -117,12 +114,7 @@ def main(args):
 
     cudnn.benchmark = True
 
-    if args.do_pretrain:
-        dataset_train = InstrcutDataSet(args, 'all', args.llama_model_path, args.max_seq_len)
-    else:
-        dataset_train = ScienceQADataSet(args, 'train', args.llama_model_path, args.max_seq_len)
-
-    print(dataset_train)
+    dataset_train = ScienceQADataSet(args, 'train', args.llama_model_path, args.max_seq_len)
 
     num_tasks = misc.get_world_size()
     global_rank = misc.get_rank()
@@ -146,14 +138,7 @@ def main(args):
 
     model.to(device)
 
-    #for debug.   print the data type.
-    for name, param in model.named_parameters():
-        print(name, param.dtype)
-
     model_without_ddp = model
-
-    #for debug. print the model.
-    # print("Model = %s" % str(model_without_ddp))
 
     eff_batch_size = args.batch_size * args.accum_iter * misc.get_world_size()
 
@@ -165,11 +150,8 @@ def main(args):
 
     print("accumulate grad iterations: %d" % args.accum_iter)
     print("effective batch size: %d" % eff_batch_size)
-
-    if args.distributed:
-        print(args.gpu)
-        model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.gpu], find_unused_parameters=True)
-        model_without_ddp = model.module
+    model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[misc.get_rank()], find_unused_parameters=True)
+    model_without_ddp = model.module
 
     # following timm: set wd as 0 for bias and norm layers
     param_groups = optim_factory.param_groups_weight_decay(model_without_ddp, args.weight_decay)
@@ -187,11 +169,12 @@ def main(args):
     print(f"Start training for {args.epochs} epochs")
     start_time = time.time()
     for epoch in range(args.start_epoch, args.epochs):
+        data_loader_train.sampler.set_epoch(epoch)
 
-        if args.distributed:
-            data_loader_train.sampler.set_epoch(epoch)
-
+        epoch_time = time.time()
         train_stats = train_one_epoch(model, data_loader_train, optimizer, device, epoch, loss_scaler, log_writer=log_writer, args=args)
+        epoch_time = time.time() - epoch_time
+        print("Epoch time: {}".format(str(datetime.timedelta(seconds=int(epoch_time)))))
 
         if args.output_dir:
             misc.save_model(args=args, model=model, model_without_ddp=model_without_ddp, optimizer=optimizer, loss_scaler=loss_scaler, epoch=epoch)
