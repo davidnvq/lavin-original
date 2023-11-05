@@ -161,10 +161,13 @@ def setup_for_distributed(is_master):
     def print(*args, **kwargs):
         force = kwargs.pop('force', False)
         force = force or (get_world_size() > 8)
-        if is_master or force:
-            now = datetime.datetime.now().time()
-            builtin_print('[{}] '.format(now), end='')  # print with time stamp
-            builtin_print(*args, **kwargs)
+
+        now = datetime.datetime.now().time()
+        if get_rank() == 0 or force:
+            builtin_print('Rank: [{}] Time: [{}] '.format(get_rank(), now), *args, **kwargs)  # print with time stamp
+        else:
+            with open(f'output_rank{get_rank()}.txt', 'a') as f:
+                builtin_print('Rank: [{}] Time: [{}] '.format(get_rank(), now), *args, **kwargs, file=f)
 
     builtins.print = print
 
@@ -227,7 +230,9 @@ def init_distributed_mode(args):
     args.distributed = True
 
     torch.cuda.set_device(args.gpu)
-    args.dist_backend = 'nccl'
+    args.dist_backend = 'NCCL'
+    port = os.environ['MASTER_PORT']
+    args.dist_url = f'tcp://127.0.0.1:{port}'
     print('| distributed init (rank {}): {}, gpu {}'.format(args.rank, args.dist_url, args.gpu), flush=True)
 
     torch.distributed.init_process_group(backend=args.dist_backend, init_method=args.dist_url, world_size=args.world_size, rank=args.rank)
