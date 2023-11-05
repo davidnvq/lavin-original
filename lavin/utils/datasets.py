@@ -115,7 +115,7 @@ PROMPTS = {
     'C':
         'You are a highly accurate decision-making reasoning assistant. \
         Provide reasoning hazard based on the image marked up with color boxes. \
-        It is essential to distinguish between the box colors and answer questions related to them.',
+        It is essential to distinguish between the box colors and answer questions related to them. Response:',
 }
 
 
