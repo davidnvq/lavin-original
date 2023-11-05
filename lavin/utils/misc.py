@@ -19,6 +19,7 @@ from pathlib import Path
 import torch
 import torch.distributed as dist
 from torch import inf
+from dataclasses import is_dataclass, asdict
 
 
 class SmoothedValue(object):
@@ -285,7 +286,7 @@ def save_model(args, epoch, model, model_without_ddp, optimizer, loss_scaler):
             'optimizer': optimizer.state_dict(),
             'epoch': epoch,
             'scaler': loss_scaler.state_dict() if loss_scaler is not None else None,
-            'args': args,
+            'args': asdict(args) if is_dataclass(args) else args,
         }
         save_on_master(to_save, checkpoint_path)
 
