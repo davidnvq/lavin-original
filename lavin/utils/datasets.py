@@ -74,7 +74,6 @@ class ScienceQADataSet(Data.Dataset):
         return example, labels, example_mask, label_mask
 
     def __getitem__(self, idx):
-
         prompt_question, prompt_answer = build_prompt(self.problems, self.qids[idx], self.args)
         answer, choices, qid = self.problems[self.qids[idx]]["answer"], self.problems[self.qids[idx]]["choices"], self.qids[idx]
 
@@ -93,6 +92,8 @@ class ScienceQADataSet(Data.Dataset):
         return example, labels, example_mask, image, indicator
 
     def __len__(self):
+        if self.args.debug:
+            return 64
         return len(self.qids)
 
     def shuffle_list(self, list):

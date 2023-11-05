@@ -58,6 +58,7 @@ def get_args():
     parser.add_argument('--warmup_epochs', type=float, default=40, metavar='N', help='epochs to warmup LR')
 
     # Dataset parameters
+    parser.add_argument('--debug', action='store_true', help='for debugging')
     parser.add_argument('--data_path', default='./data/captions.json', type=str, help='dataset path')
     parser.add_argument('--output_dir', default='./outputs/debug', help='path where to save, empty for no saving')
     parser.add_argument('--log_dir', default='./outputs/debug', help='path where to tensorboard log')
