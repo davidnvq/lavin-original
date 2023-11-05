@@ -141,7 +141,7 @@ def main(adapter_path="./outputs/exp1_dhpr_7b01_gt4/checkpoint-19.pth", **kwargs
             with open(out_path, 'w') as f:
                 json.dump(ret, f)
 
-            corpus_scores = {f"{split[:8]}_{k}": v for k, v in corpus_scores.items()}
+            corpus_scores = {f"{split[:]}_{k}": v for k, v in corpus_scores.items()}
             if not eval_args.debug:
                 wandb.log(corpus_scores)
 
