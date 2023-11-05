@@ -52,6 +52,7 @@ class TrainArgs:
     warmup_epochs: float = 2
 
     # Dataset parameters
+    dataset: str = 'dhpr'
     debug: bool = False
     output_dir: str = './outputs/debug_dhpr'
     device: str = 'cuda'
