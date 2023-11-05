@@ -13,11 +13,11 @@ import torch.backends.cudnn as cudnn
 from torch.utils.tensorboard import SummaryWriter
 import timm.optim.optim_factory as optim_factory
 
-import util.misc as misc
-from util.misc import NativeScalerWithGradNormCount as NativeScaler
+import lavin.utils.misc as misc
+from lavin.utils.misc import NativeScalerWithGradNormCount as NativeScaler
 from engine import train_one_epoch
 
-from util.datasets import ScienceQADataSet, InstrcutDataSet
+from lavin.utils.datasets import ScienceQADataSet, InstrcutDataSet
 from lavin.mm_adaptation import LaVIN
 
 # import bitsandbytes as bnb # don't need this if you don't use paged optimizer

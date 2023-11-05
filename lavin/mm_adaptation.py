@@ -5,7 +5,7 @@ from lavin import ModelArgs, Tokenizer, Transformer
 from lavin.mm_adapter import set_MMAdapter, set_Clip_Adapter
 
 from pathlib import Path
-from util.apply_delta import apply_model_delta_online
+from lavin.utils.apply_delta import apply_model_delta_online
 
 
 def _load_and_redistribute_checkpoint(llama_model_path, model_name):
@@ -47,7 +47,7 @@ def LaVIN(args):
     torch.set_default_tensor_type(torch.FloatTensor)
 
     if args.bits in ['4bit', '8bit']:
-        from util.quantization import quant_model_bnb
+        from lavin.utils.quantization import quant_model_bnb
         llama.layers = quant_model_bnb(llama.layers, quant_bit=args.bits)
 
     llama.load_state_dict(checkpoint, strict=False)

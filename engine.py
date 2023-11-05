@@ -6,8 +6,8 @@ from typing import Iterable
 
 import torch
 
-import util.misc as misc
-import util.lr_sched as lr_sched
+import lavin.utils.misc as misc
+import lavin.utils.lr_sched as lr_sched
 import wandb
 
 

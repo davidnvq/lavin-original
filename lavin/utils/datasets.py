@@ -18,7 +18,7 @@ from torchvision.transforms import transforms
 import os
 from timm.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 from PIL import Image
-from util.base_prompt import *
+from lavin.utils.base_prompt import *
 import torch
 from lavin import Tokenizer
 import copy

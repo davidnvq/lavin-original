@@ -16,7 +16,7 @@ from lavin.eval_model import ModelArgs, Transformer
 from lavin.tokenizer import Tokenizer
 from lavin.generator import LaVIN_Generator
 from lavin.mm_adapter import set_MMAdapter, set_Clip_Adapter
-from util.base_prompt import build_prompt
+from lavin.utils.base_prompt import build_prompt
 from dataclasses import dataclass
 import re
 import random
@@ -31,7 +31,7 @@ from timm.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 from pathlib import Path
 import fairscale.nn.model_parallel.initialize as fs_init
 import torch.distributed as dist
-from util.apply_delta import apply_model_delta_online
+from lavin.utils.apply_delta import apply_model_delta_online
 
 warnings.filterwarnings('ignore')
 
@@ -174,7 +174,7 @@ def load(
     torch.set_default_tensor_type(torch.FloatTensor)
 
     if bits in ['4bit', '8bit']:
-        from util.quantization import quant_model_bnb
+        from lavin.utils.quantization import quant_model_bnb
         model.layers = quant_model_bnb(model.layers, quant_bit='4bit')
 
     set_MMAdapter(model, adapter_type, dim=adapter_dim, s=adapter_scale, t=temperature)
