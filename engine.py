@@ -76,7 +76,7 @@ def train_one_epoch(model: torch.nn.Module,
         iter_time = time.time() - start_time
         eta_time = iter_time * (total_iters - data_iter_step - 1)
         eta_time_str = str(datetime.timedelta(seconds=int(eta_time)))
-        print(f"Epoch: [{epoch:2d}], Iter: [{data_iter_step:4d}/{total_iters:4d}], "
+        print(f"Epoch: [{epoch:2d}], Iter: [{data_iter_step:4d}/{total_iters:<4d}], "
               f"Eta: {eta_time_str}, Loss: {c_loss_value_reduce:.4f}, lr: {lr:.6f}")
 
         start_time = time.time()
