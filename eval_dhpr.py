@@ -148,7 +148,7 @@ def main(adapter_path="./outputs/exp1_dhpr_7b01_gt4/checkpoint-19.pth", **kwargs
         total_batches = len(dataloader)
 
         if eval_args.debug:
-            total_batches = 8  # len(dataloader)
+            total_batches = 1  # len(dataloader)
         for idx, (images, indicators, prompts, gt_answers, image_ids) in zip(range(total_batches), dataloader):
             preds, responses = generator.generate(prompts,
                                                   images=images,
@@ -167,8 +167,10 @@ def main(adapter_path="./outputs/exp1_dhpr_7b01_gt4/checkpoint-19.pth", **kwargs
 
             predictions = predictions + [response.strip().replace('\n', '') for response in responses]
             mult_references = mult_references + [[gt.strip().replace('\n', '')] for gt in gt_answers]
-
         save_outputs(predictions, mult_references)
+
+        if eval_args.debug:
+            break
 
 
 if __name__ == "__main__":
