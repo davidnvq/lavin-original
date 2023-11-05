@@ -84,8 +84,6 @@ def load(checkpoint, tokenizer, model_params, adapter_checkpoint, args):
     model.load_state_dict(state_dict, strict=False)
     model.to(torch.device('cuda'))
 
-    for name, param in model.named_parameters():
-        print(name, param.dtype)
     generator = LaVIN_Generator(model, tokenizer)
     print(f"Loaded in {time.time() - start_time:.2f} seconds")
     return generator
@@ -107,15 +105,18 @@ def main(adapter_path="./outputs/exp1_dhpr_7b01_gt4/checkpoint-19.pth", **kwargs
     train_args.update(kwargs)
     eval_args = EvalArgs(**train_args)
 
+    for k, v in asdict(eval_args).items():
+        print(f"{k:<20}: {v}")
+
     proj_name = os.path.basename(os.path.dirname(eval_args.adapter_path))
     ckpt_name = os.path.basename(eval_args.adapter_path).split('.')[0]
-    # if eval_args.debug:
-    #     wandb.init(project="LaVIN", name=proj_name + '-' + ckpt_name, dir=os.path.dirname(eval_args.adapter_path), config=asdict(eval_args))
+    if not eval_args.debug:
+        wandb.init(project="LaVIN", name=proj_name + '-' + ckpt_name, dir=os.path.dirname(eval_args.adapter_path), config=asdict(eval_args))
 
     checkpoint, tokenizer, model_params = _load_and_redistribute_checkpoint(eval_args.llama_model_path, eval_args.llm_model)
     generator = load(checkpoint, tokenizer, model_params, adapter_checkpoint, eval_args)
 
-    for split in ['val_indirect']:  # , 'val_direct', 'test_indirect', 'test_direct']:
+    for split in ['val_indirect', 'val_direct', 'test_indirect', 'test_direct']:
         print('split: ', split)
 
         dataset = DHPRDataset(split=split, max_words=256)
@@ -140,11 +141,14 @@ def main(adapter_path="./outputs/exp1_dhpr_7b01_gt4/checkpoint-19.pth", **kwargs
                 json.dump(ret, f)
 
             corpus_scores = {f"{split[:8]}_{k}": v for k, v in corpus_scores.items()}
-            # if not eval_args.debug:
-            #     wandb.log(corpus_scores)
+            if not eval_args.debug:
+                wandb.log(corpus_scores)
 
         total_batches = len(dataloader)
-        for idx, (images, indicators, prompts, gt_answers, image_ids) in enumerate(dataloader):
+
+        if not eval_args.debug:
+            total_batches = 8  # len(dataloader)
+        for idx, (images, indicators, prompts, gt_answers, image_ids) in zip(range(total_batches), dataloader):
             preds, responses = generator.generate(prompts,
                                                   images=images,
                                                   indicators=indicators,
