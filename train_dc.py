@@ -162,7 +162,7 @@ def main(**kwargs):
         print("Epoch time: {}".format(str(datetime.timedelta(seconds=int(epoch_time)))))
 
         if args.output_dir:
-            misc.save_model(args=asdict(args), model=model, model_without_ddp=_model, optimizer=optimizer, loss_scaler=loss_scaler, epoch=epoch)
+            misc.save_model(args=args, model=model, model_without_ddp=_model, optimizer=optimizer, loss_scaler=loss_scaler, epoch=epoch)
             print("Saved model and optimizer to {}".format(args.output_dir))
             torch.distributed.barrier()
 
