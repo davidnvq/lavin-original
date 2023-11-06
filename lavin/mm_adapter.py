@@ -9,8 +9,11 @@ import lavin.eval_model
 class RepAdapter_Router(nn.Module):
     """ Pytorch Implemention of RepAdapter for 1d tensor"""
 
-    def __init__(self, in_features=768, hidden_dim=8, groups=2, scale=1, t=10.):
+    def __init__(self, in_features=768, hidden_dim=8, groups=2, scale=1, t=10., precision='fp16'):
         super().__init__()
+
+        self.precision = {'fp16': torch.float16, 'bf16': torch.bfloat16}[precision]
+
         self.conv_A = nn.Conv1d(in_features, hidden_dim, 1, groups=1, bias=True)
         self.conv_B = nn.Conv1d(hidden_dim, in_features, 1, groups=groups, bias=True)
 
@@ -32,9 +35,14 @@ class RepAdapter_Router(nn.Module):
         nn.init.zeros_(self.conv_D.bias)
 
     def forward(self, x, weights=None):
-        with autocast():
+        with autocast(dtype=self.precision):
             if weights is None:
-                weights = torch.softmax(self.expert_weights(x[:, 0]) / self.t, -1).half()
+                weights = torch.softmax(self.expert_weights(x[:, 0]) / self.t, -1)
+                if self.precision == torch.float16:
+                    weights = weights.half()
+                elif self.precision == torch.bfloat16:
+                    weights = weights.bfloat16()
+
             x = x.transpose(1, 2)
             x_ = self.dropout(self.conv_A(x))
             x = self.conv_B(x_) * self.scale * weights[:, 0, None, None] + self.conv_D(x_) * self.scale * weights[:, 1, None, None] + x
@@ -48,10 +56,11 @@ class RepAdapter(nn.Module):
     copy from https://github.com/luogen1996/RepAdapter/blob/main/repadapter.py
     """
 
-    def __init__(self, in_features=768, hidden_dim=8, groups=2, scale=1):
+    def __init__(self, in_features=768, hidden_dim=8, groups=2, scale=1, precision='fp16'):
         super().__init__()
         self.conv_A = nn.Conv1d(in_features, hidden_dim, 1, groups=1, bias=True)
         self.conv_B = nn.Conv1d(hidden_dim, in_features, 1, groups=groups, bias=True)
+        self.precision = {'fp16': torch.float16, 'bf16': torch.bfloat16}[precision]
 
         self.dropout = nn.Dropout(0.1)
         self.groups = groups
@@ -63,7 +72,7 @@ class RepAdapter(nn.Module):
         nn.init.zeros_(self.conv_B.bias)
 
     def forward(self, x, weights=None):
-        with autocast():
+        with autocast(dtype=self.precision):
             x = x.transpose(1, 2)
             x = self.conv_B(self.dropout(self.conv_A(x)))
             x = x.transpose(1, 2).contiguous()
@@ -132,14 +141,14 @@ def forward_clip_full(self, x: torch.Tensor):
     return x
 
 
-def set_MMAdapter(model, method, dim=8, s=1, set_forward=True, t=10, gradient_checkpointing=False):
+def set_MMAdapter(model, method, dim=8, s=1, set_forward=True, t=10, gradient_checkpointing=False, precision='fp16'):
     if method == 'block':
         # not support right now
         assert NotImplementedError
         for module in model.children():
             if type(module) == lavin.model.TransformerBlock or type(module) == lavin.eval_model.TransformerBlock:
-                module.adapter_attn = RepAdapter_Router(module.dim, hidden_dim=dim, scale=s, t=t)
-                module.adapter_mlp = RepAdapter_Router(module.dim, hidden_dim=dim, scale=s, t=t)
+                module.adapter_attn = RepAdapter_Router(module.dim, hidden_dim=dim, scale=s, t=t, precision=precision)
+                module.adapter_mlp = RepAdapter_Router(module.dim, hidden_dim=dim, scale=s, t=t, precision=precision)
                 module.s = s
                 module.t = t
                 module.gradient_checkpointing = gradient_checkpointing
@@ -150,12 +159,12 @@ def set_MMAdapter(model, method, dim=8, s=1, set_forward=True, t=10, gradient_ch
                 if set_forward:
                     setattr(module, 'forward', bound_method)
             elif len(list(module.children())) != 0:
-                set_MMAdapter(module, method, dim, s, set_forward=set_forward, t=t, gradient_checkpointing=False)
+                set_MMAdapter(module, method, dim, s, set_forward=set_forward, t=t, gradient_checkpointing=False, precision=precision)
 
     elif method == 'attn':
         for module in model.children():
             if type(module) == lavin.model.TransformerBlock or type(module) == lavin.eval_model.TransformerBlock:
-                module.adapter_attn = RepAdapter_Router(module.dim, hidden_dim=dim, scale=s, t=t)
+                module.adapter_attn = RepAdapter_Router(module.dim, hidden_dim=dim, scale=s, t=t, precision=precision)
                 module.s = s
                 module.t = t
                 module.gradient_checkpointing = gradient_checkpointing
@@ -166,12 +175,12 @@ def set_MMAdapter(model, method, dim=8, s=1, set_forward=True, t=10, gradient_ch
                 if set_forward:
                     setattr(module, 'forward', bound_method)
             elif len(list(module.children())) != 0:
-                set_MMAdapter(module, method, dim, s, set_forward=set_forward, t=t, gradient_checkpointing=False)
+                set_MMAdapter(module, method, dim, s, set_forward=set_forward, t=t, gradient_checkpointing=False, precision=precision)
 
     elif method == 'normal':
         for module in model.children():
             if type(module) == lavin.model.TransformerBlock or type(module) == lavin.eval_model.TransformerBlock:
-                module.adapter_attn = RepAdapter(module.dim, hidden_dim=dim, scale=s)
+                module.adapter_attn = RepAdapter(module.dim, hidden_dim=dim, scale=s, precision=precision)
                 module.s = s
                 if type(module) == lavin.eval_model.TransformerBlock:
                     bound_method = forward_llama_attn_normal_cache.__get__(module, module.__class__)
@@ -180,22 +189,22 @@ def set_MMAdapter(model, method, dim=8, s=1, set_forward=True, t=10, gradient_ch
                 if set_forward:
                     setattr(module, 'forward', bound_method)
             elif len(list(module.children())) != 0:
-                set_MMAdapter(module, method, dim, s, set_forward=set_forward, t=t, gradient_checkpointing=False)
+                set_MMAdapter(module, method, dim, s, set_forward=set_forward, t=t, gradient_checkpointing=False, precision=precision)
 
 
 from clip.model import ResidualAttentionBlock
 
 
-def set_Clip_Adapter(model, method, dim=8, s=1, set_forward=True, t=10.):
+def set_Clip_Adapter(model, method, dim=8, s=1, set_forward=True, t=10., precision='fp16'):
     for module in model.children():
         if type(module) == ResidualAttentionBlock:
             if method == 'router':
-                module.adapter_attn = RepAdapter_Router(1024, hidden_dim=dim, scale=s, t=t)
+                module.adapter_attn = RepAdapter_Router(1024, hidden_dim=dim, scale=s, t=t, precision=precision)
             elif method == 'router_block':
-                module.adapter_attn = RepAdapter_Router(1024, hidden_dim=dim, scale=s, t=t)
-                module.adapter_mlp = RepAdapter_Router(1024, hidden_dim=dim, scale=s, t=t)
+                module.adapter_attn = RepAdapter_Router(1024, hidden_dim=dim, scale=s, t=t, precision=precision)
+                module.adapter_mlp = RepAdapter_Router(1024, hidden_dim=dim, scale=s, t=t, precision=precision)
             elif method == 'normal':
-                module.adapter_attn = RepAdapter(1024, hidden_dim=dim, scale=s)
+                module.adapter_attn = RepAdapter(1024, hidden_dim=dim, scale=s, precision=precision)
 
             module.s = s
 
@@ -207,4 +216,4 @@ def set_Clip_Adapter(model, method, dim=8, s=1, set_forward=True, t=10.):
                 setattr(module, 'forward', bound_method)
 
         elif len(list(module.children())) != 0:
-            set_Clip_Adapter(module, method, dim, s, set_forward=set_forward, t=t)
+            set_Clip_Adapter(module, method, dim, s, set_forward=set_forward, t=t, precision=precision)
