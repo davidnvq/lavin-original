@@ -31,8 +31,8 @@ class TrainArgs:
     llm_model: str = '100M'
     use_vicuna: bool = False
     cpu_load: bool = False
-    adapter_type: str = 'attn'  # normal
     visual_adapter_type: str = 'router'  # normal, router_block
+    adapter_type: str = 'attn'  # normal
     adapter_dim: int = 8
     hidden_proj: int = 128
     temperature: float = 10.
@@ -80,7 +80,7 @@ def init_args(**kwargs):
         args.batch_size = 2
         args.epochs = 2
         args.num_workers = 0
-    
+
     for k, v in asdict(args).items():
         print(f"{k:<20}: {v}")
     os.makedirs(args.output_dir, exist_ok=True)
