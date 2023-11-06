@@ -159,7 +159,10 @@ def main(adapter_path="./outputs/exp1_dhpr_7b01_gt4/checkpoint-19.pth", **kwargs
     new_ckpt_name = get_name(ckpt_name)
 
     if not eval_args.debug:
-        wandb.init(project="lavin-original", name=new_ckpt_name + '-' + proj_name, dir=os.path.dirname(adapter_path), config=asdict(eval_args))
+        wandb.init(project="lavin-original",
+                   name='e7-' + new_ckpt_name + '-' + proj_name,
+                   dir=os.path.dirname(adapter_path),
+                   config=asdict(eval_args))
 
     checkpoint, tokenizer, model_params = _load_and_redistribute_checkpoint(eval_args.llama_model_path, eval_args.llm_model)
     generator = load(checkpoint, tokenizer, model_params, adapter_checkpoint, eval_args)
