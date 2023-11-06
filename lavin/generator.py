@@ -15,6 +15,8 @@ class LaVIN_Generator:
     def __init__(self, model: Transformer, tokenizer: Tokenizer):
         self.model = model
         self.tokenizer = tokenizer
+        self.precision = self.model.precision
+
         # self.backbone = clip.load('ViT-B/16', device='cpu')[0]
 
     def insert_image_embeds(self, examples, image_embeds, prefix_img, prefix_nonimg, img_indicators):

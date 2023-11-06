@@ -30,6 +30,7 @@ class ModelArgs:
 
     max_batch_size: int = 32
     max_seq_len: int = 2048
+    precision: str = 'fp16'
 
 
 class RMSNorm(torch.nn.Module):
@@ -211,6 +212,7 @@ class Transformer(nn.Module):
         self.params = params
         self.vocab_size = params.vocab_size
         self.n_layers = params.n_layers
+        self.precision = {'fp16': torch.float16, 'bf16': torch.bfloat16, 'fp32': torch.float32}[params.precision]
 
         self.tok_embeddings = ParallelEmbedding(params.vocab_size, params.dim, init_method=lambda x: x)
 
@@ -230,7 +232,7 @@ class Transformer(nn.Module):
 
     @torch.inference_mode()
     def forward(self, tokens: torch.Tensor, start_pos: int):
-        with autocast():
+        with autocast(dtype=self.precision):
             _bsz, seqlen, _ = tokens.shape
             # h = self.tok_embeddings(tokens)
             h = tokens
@@ -249,4 +251,4 @@ class Transformer(nn.Module):
 
             h = self.norm(h)
             output = self.output(h[:, -1, :])  # only compute last logits
-            return output.float()
+        return output.float()

@@ -65,15 +65,33 @@ def load(checkpoint, tokenizer, model_params, adapter_checkpoint, args):
     model_args = ModelArgs(max_seq_len=256, max_batch_size=4, hidden_proj=args.hidden_proj, **model_params)
     model_args.vocab_size = tokenizer.n_words
 
-    torch.set_default_tensor_type(torch.cuda.HalfTensor)
+    if model_args.precision == 'bf16':
+        torch.set_default_tensor_type(torch.cuda.BFloat16Tensor)
+    elif model_args.precision == 'fp16':
+        torch.set_default_tensor_type(torch.cuda.HalfTensor)
+
     model = Transformer(model_args)
     #delete language encoder
     del model.backbone.transformer
 
     torch.set_default_tensor_type(torch.FloatTensor)
 
-    set_MMAdapter(model, args.adapter_type, dim=args.adapter_dim, s=args.adapter_scale, t=args.temperature)
-    set_Clip_Adapter(model.backbone.visual, args.visual_adapter_type, dim=args.adapter_dim, s=args.adapter_scale, t=args.temperature)
+    set_MMAdapter(
+        model,
+        args.adapter_type,
+        dim=args.adapter_dim,
+        s=args.adapter_scale,
+        t=args.temperature,
+        precision=model_args.precision,
+    )
+    set_Clip_Adapter(
+        model.backbone.visual,
+        args.visual_adapter_type,
+        dim=args.adapter_dim,
+        s=args.adapter_scale,
+        t=args.temperature,
+        precision="fp16",
+    )
 
     model.load_state_dict(checkpoint, strict=False)
 
