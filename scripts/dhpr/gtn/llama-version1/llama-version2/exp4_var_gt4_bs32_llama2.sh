@@ -4,7 +4,7 @@
 #$-ac d=none
 #$-j y
 #$-o $HOME/log/exp4_var_gt4_bs32_llama2
-#$ -N "exp4_var_gt4_bs32_llama2"
+#$ -N "llama2"
 #$-jc gtb-container_g4.24h
 
 
