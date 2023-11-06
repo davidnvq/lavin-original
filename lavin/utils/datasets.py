@@ -135,7 +135,7 @@ class DHPRDataset:
         self.root_path = root
         self.max_words = max_words
         self.tokenizer = Tokenizer(model_path=osp.join(root, 'weights/tokenizer.model'))
-        self.anno_data = json.load(open(osp.join(root, f'dhpr_annotations/v1101_meta_anno_{split}.json')))
+        self.anno_data = json.load(open(osp.join(root, f'dhpr_annotations/v1107_meta_anno_{split}.json')))
         self.image_ids = list(self.anno_data.keys())
 
         print(f"Split {split}: {len(self.image_ids)} items!")
