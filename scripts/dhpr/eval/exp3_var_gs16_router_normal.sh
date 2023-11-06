@@ -1,10 +1,11 @@
+
 #!/bin/bash
 #$-S /bin/bash
 #$-cwd
 #$-ac d=none
 #$-j y
-#$-o $HOME/log/eval_exp3_var_gs16_routerblk_attn
-#$ -N "eval_exp3_var_gs16_routerblk_attn"
+#$-o $HOME/log/eval_exp3_var_gs16_router_normal.sh
+#$ -N "eval_exp3_var_gs16_router_normal.sh"
 #$-jc gtb-container_g1.24h
 
 # For internet connection
@@ -21,7 +22,6 @@ export PATH=$PATH:$JAVA_HOME/bin
 source ~/anaconda3/etc/profile.d/conda.sh
 conda activate lavin-torch2.1
 
-export EXPNAME="exp3_var_gs16_routerblk_attn"
-export CUDA_VISIBLE_DEVICES=0
-torchrun --nproc_per_node 1 --master_port 12120 eval_dhpr.py \
-    --adapter_path ./outputs/${EXPNAME}/checkpoint-19.pth
+torchrun --nproc_per_node 1 --master_port 29578 eval_dhpr.py \
+    --adapter_path ./outputs/exp3_var_gs16_router_normal.sh/checkpoint-19.pth \
+    --batch_size 2
