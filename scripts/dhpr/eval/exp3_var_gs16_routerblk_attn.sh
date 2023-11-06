@@ -5,7 +5,7 @@
 #$-j y
 #$-o $HOME/log/eval_exp3_var_gs16_routerblk_attn
 #$ -N "eval_exp3_var_gs16_routerblk_attn"
-#$-jc gs-container_g16.24h
+#$-jc gtb-container_g1.24h
 
 # For internet connection
 export MY_PROXY_URL="http://10.1.10.1:8080/"
