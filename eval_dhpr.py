@@ -7,7 +7,7 @@ import torch
 import fire
 import time
 import json
-from datetime import datetime
+import datetime
 
 import wandb
 from fairscale.nn.model_parallel.initialize import initialize_model_parallel
@@ -94,7 +94,7 @@ def redefine_print():
     builtin_print = builtins.print
 
     def print(*args, **kwargs):
-        now = datetime.now().time()
+        now = datetime.datetime.now().time()
         builtin_print('Eval [{}] '.format(now), end='')  # print with time stamp
         builtin_print(*args, **kwargs)
 
@@ -106,6 +106,19 @@ class EvalArgs(TrainArgs):
     adapter_path = "./outputs/exp1_dhpr_7b01_gt4/checkpoint-19.pth"
     generation_temperature: float = 0.0
     top_p: float = 0.75
+
+
+def get_name(filename="checkpoint-12.pth"):
+    # return ckpt12
+    # Use regular expression to extract numeric part
+    match = re.search(r'\d+', filename)
+    if match:
+        numeric_part = match.group()
+        new_filename = "ckpt" + numeric_part
+        return new_filename
+    else:
+        print("No numeric part found in the filename.")
+        return filename
 
 
 def main(adapter_path="./outputs/exp1_dhpr_7b01_gt4/checkpoint-19.pth", **kwargs):
@@ -125,9 +138,10 @@ def main(adapter_path="./outputs/exp1_dhpr_7b01_gt4/checkpoint-19.pth", **kwargs
 
     proj_name = os.path.basename(os.path.dirname(adapter_path))
     ckpt_name = os.path.basename(adapter_path).split('.')[0]
+    new_ckpt_name = get_name(ckpt_name)
 
     if not eval_args.debug:
-        wandb.init(project="lavin-original", name=proj_name + '-' + ckpt_name, dir=os.path.dirname(adapter_path), config=asdict(eval_args))
+        wandb.init(project="lavin-original", name=new_ckpt_name + '-' + proj_name, dir=os.path.dirname(adapter_path), config=asdict(eval_args))
 
     checkpoint, tokenizer, model_params = _load_and_redistribute_checkpoint(eval_args.llama_model_path, eval_args.llm_model)
     generator = load(checkpoint, tokenizer, model_params, adapter_checkpoint, eval_args)
@@ -163,7 +177,9 @@ def main(adapter_path="./outputs/exp1_dhpr_7b01_gt4/checkpoint-19.pth", **kwargs
         total_batches = len(dataloader)
 
         if eval_args.debug:
-            total_batches = 1  # len(dataloader)
+            total_batches = 100  # len(dataloader)
+
+        start_time = time.time()
         for idx, (images, indicators, prompts, gt_answers, image_ids) in zip(range(total_batches), dataloader):
             preds, responses = generator.generate(prompts,
                                                   images=images,
@@ -176,12 +192,21 @@ def main(adapter_path="./outputs/exp1_dhpr_7b01_gt4/checkpoint-19.pth", **kwargs
 
             for pred, response, image_id, gt_answer in zip(preds, responses, image_ids, gt_answers):
                 ret[image_id] = {'pred': pred, 'response': response, 'gt_answer': gt_answer}
-                print('\n----\n', f'batch_idx {idx}/{total_batches} : image_id: ', image_id)
+                print('\n')
+                print(f'image_id: ', image_id)
                 print('response: ', response)
                 print('gt_answer: ', gt_answer)
 
             predictions = predictions + [response.strip().replace('\n', '') for response in responses]
             mult_references = mult_references + [[gt.strip().replace('\n', '')] for gt in gt_answers]
+
+            iter_time = time.time() - start_time
+            eta_time = iter_time * (total_batches - idx)
+            eta_time = str(datetime.timedelta(seconds=eta_time))
+            print("\n\n")
+            print(f"Batch idx [{idx}/{total_batches}] Eta: {eta_time} \n\n")
+            start_time = time.time()
+
         save_outputs(predictions, mult_references)
 
         if eval_args.debug:
