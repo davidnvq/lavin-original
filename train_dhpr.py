@@ -31,8 +31,8 @@ class TrainArgs:
     llm_model: str = '100M'
     use_vicuna: bool = False
     cpu_load: bool = False
-    adapter_type: str = 'attn'
-    visual_adapter_type: str = 'router'
+    adapter_type: str = 'attn'  # normal
+    visual_adapter_type: str = 'router'  # normal, router_block
     adapter_dim: int = 8
     hidden_proj: int = 128
     temperature: float = 10.

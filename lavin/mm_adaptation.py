@@ -33,12 +33,7 @@ def LaVIN(args):
 
     model_args.vocab_size = tokenizer.n_words
 
-    if args.cpu_load:
-        #cpu load is slow, but is freindly for GPU with limited memory.
-        torch.set_default_tensor_type(torch.HalfTensor)
-    else:
-        torch.set_default_tensor_type(torch.cuda.HalfTensor)
-
+    torch.set_default_tensor_type(torch.cuda.HalfTensor)
     llama = Transformer(model_args)
 
     #delete language encoder
@@ -46,21 +41,10 @@ def LaVIN(args):
 
     torch.set_default_tensor_type(torch.FloatTensor)
 
-    if args.bits in ['4bit', '8bit']:
-        from lavin.utils.quantization import quant_model_bnb
-        llama.layers = quant_model_bnb(llama.layers, quant_bit=args.bits)
-
     llama.load_state_dict(checkpoint, strict=False)
-    if args.use_vicuna:
-        apply_model_delta_online(llama, '../data/weights/vicuna_' + args.llm_model)
 
     if args.adapter_type == 'block' or args.adapter_type == 'attn':
-        set_MMAdapter(llama,
-                      args.adapter_type,
-                      dim=args.adapter_dim,
-                      s=args.adapter_scale,
-                      t=args.temperature,
-                      gradient_checkpointing=args.gradient_checkpointing)
+        set_MMAdapter(llama, args.adapter_type, dim=args.adapter_dim, s=args.adapter_scale, t=args.temperature, gradient_checkpointing=False)
         set_Clip_Adapter(llama.backbone.visual, args.visual_adapter_type, dim=args.adapter_dim, s=args.adapter_scale, t=args.temperature)
 
     learnable_keys = ['adapter']
