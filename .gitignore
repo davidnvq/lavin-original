@@ -134,3 +134,5 @@ outputs/
 
 .idea/
 debug.py
+
+scripts/dhpr/eval/*.sh
