@@ -76,7 +76,13 @@ class TrainArgs:
 
 def init_args(**kwargs):
     args = TrainArgs(**kwargs)
-
+    if args.debug:
+        args.batch_size = 2
+        args.epochs = 2
+        args.num_workers = 0
+    
+    for k, v in asdict(args).items():
+        print(f"{k:<20}: {v}")
     os.makedirs(args.output_dir, exist_ok=True)
     with open(os.path.join(args.output_dir, "args.json"), mode="w", encoding="utf-8") as f:
         f.write(json.dumps(asdict(args), indent=4, sort_keys=True))
