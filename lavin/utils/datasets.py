@@ -228,7 +228,7 @@ class DHPRDataset:
 
     def __len__(self):
         if self.debug:
-            return 64
+            return 16
         return len(self.anno_data)
 
 
