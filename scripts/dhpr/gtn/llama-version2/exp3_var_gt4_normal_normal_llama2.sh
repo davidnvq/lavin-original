@@ -4,7 +4,7 @@
 #$-ac d=none
 #$-j y
 #$-o $HOME/log/exp4_var_gt4_normal_normal_llama2_bs16
-#$ -N "exp4_var_gt4_normal_normal_llama2_bs16"
+#$ -N llama2-exp
 #$-jc gtb-container_g4.24h
 
 # For internet connection
