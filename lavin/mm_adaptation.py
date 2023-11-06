@@ -33,9 +33,9 @@ def LaVIN(args):
 
     model_args.vocab_size = tokenizer.n_words
 
-    if args.precision == 'bf16':
+    if model_args.precision == 'bf16':
         torch.set_default_tensor_type(torch.cuda.BFloat16Tensor)
-    elif args.precision == 'fp16':
+    elif model_args.precision == 'fp16':
         torch.set_default_tensor_type(torch.cuda.HalfTensor)
 
     llama = Transformer(model_args)
@@ -53,13 +53,14 @@ def LaVIN(args):
                   s=args.adapter_scale,
                   t=args.temperature,
                   gradient_checkpointing=False,
-                  precision=args.precision)
+                  precision=model_args.precision)
+
     set_Clip_Adapter(llama.backbone.visual,
                      args.visual_adapter_type,
                      dim=args.adapter_dim,
                      s=args.adapter_scale,
                      t=args.temperature,
-                     precision=args.precision)
+                     precision="fp16")
 
     learnable_keys = ['adapter']
     total = 0.

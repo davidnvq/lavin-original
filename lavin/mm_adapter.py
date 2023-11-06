@@ -175,7 +175,7 @@ def set_MMAdapter(model, method, dim=8, s=1, set_forward=True, t=10, gradient_ch
     elif method == 'normal':
         for module in model.children():
             if type(module) == lavin.model.TransformerBlock or type(module) == lavin.eval_model.TransformerBlock:
-                module.adapter_attn = RepAdapter(module.dim, hidden_dim=dim, scale=s)
+                module.adapter_attn = RepAdapter(module.dim, hidden_dim=dim, scale=s, precision=precision)
                 module.s = s
                 if type(module) == lavin.eval_model.TransformerBlock:
                     bound_method = forward_llama_attn_normal_cache.__get__(module, module.__class__)

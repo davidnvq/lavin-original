@@ -247,17 +247,17 @@ class Transformer(nn.Module):
 
         # print(images.dtype)
         image_embeds = self.backbone.encode_image(images)
-        if self.precision == 'fp16':
+        if self.params.precision == 'fp16':
             image_embeds = image_embeds.half()
-        elif self.precision == 'bf16':
+        elif self.params.precision == 'bf16':
             image_embeds = image_embeds.bfloat16()
 
         if isinstance(img_indicators, list):
             img_indicators = torch.Tensor(img_indicators).to(image_embeds.device).long()
         modality_embed = self.adapter_modality_embedding(img_indicators.unsqueeze(1))
-        if self.precision == 'fp16':
+        if self.params.precision == 'fp16':
             modality_embed = modality_embed.half()
-        elif self.precision == 'bf16':
+        elif self.params.precision == 'bf16':
             modality_embed = modality_embed.bfloat16()
 
         image_embeds = self.adapter_proj(image_embeds)
@@ -285,7 +285,7 @@ class Transformer(nn.Module):
 
         start_pos = 0
         for layer in self.layers:
-            h = layer(h, start_pos, freqs_cis, mask)
+            h = layer(h, start_pos, freqs_cis, mask)  # dtype: precision
 
         h = self.norm(h)
         output = self.output(h)
