@@ -94,7 +94,7 @@ def redefine_print():
     builtin_print = builtins.print
 
     def print(*args, **kwargs):
-        now = datetime.datetime.now().time()
+        now = datetime.now().time()
         builtin_print('Eval [{}] '.format(now), end='')  # print with time stamp
         builtin_print(*args, **kwargs)
 
