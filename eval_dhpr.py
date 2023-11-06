@@ -89,6 +89,18 @@ def load(checkpoint, tokenizer, model_params, adapter_checkpoint, args):
     return generator
 
 
+def redefine_print():
+    import builtins
+    builtin_print = builtins.print
+
+    def print(*args, **kwargs):
+        now = datetime.datetime.now().time()
+        builtin_print('Eval [{}] '.format(now), end='')  # print with time stamp
+        builtin_print(*args, **kwargs)
+
+    builtins.print = print
+
+
 @dataclass
 class EvalArgs(TrainArgs):
     adapter_path = "./outputs/exp1_dhpr_7b01_gt4/checkpoint-19.pth"
@@ -98,21 +110,24 @@ class EvalArgs(TrainArgs):
 
 def main(adapter_path="./outputs/exp1_dhpr_7b01_gt4/checkpoint-19.pth", **kwargs):
     local_rank, world_size = setup_model_parallel()
+    redefine_print()
 
     # load adapter & train_args
     adapter_checkpoint = torch.load(adapter_path, map_location="cpu")
     train_args = adapter_checkpoint['args']
     train_args.update(kwargs)
+
     eval_args = EvalArgs(**train_args)
+    eval_args.adapter_path = adapter_path
 
     for k, v in asdict(eval_args).items():
         print(f"{k:<20}: {v}")
 
-    proj_name = os.path.basename(os.path.dirname(eval_args.adapter_path))
-    ckpt_name = os.path.basename(eval_args.adapter_path).split('.')[0]
+    proj_name = os.path.basename(os.path.dirname(adapter_path))
+    ckpt_name = os.path.basename(adapter_path).split('.')[0]
 
     if not eval_args.debug:
-        wandb.init(project="lavin-original", name=proj_name + '-' + ckpt_name, dir=os.path.dirname(eval_args.adapter_path), config=asdict(eval_args))
+        wandb.init(project="lavin-original", name=proj_name + '-' + ckpt_name, dir=os.path.dirname(adapter_path), config=asdict(eval_args))
 
     checkpoint, tokenizer, model_params = _load_and_redistribute_checkpoint(eval_args.llama_model_path, eval_args.llm_model)
     generator = load(checkpoint, tokenizer, model_params, adapter_checkpoint, eval_args)
