@@ -32,6 +32,8 @@ def train_one_epoch(model: torch.nn.Module,
 
     start_time = time.time()
     total_iters = len(data_loader)
+    epoch_loss = torch.tensor(0.0).cuda()
+    actual_iters = 0
     for data_iter_step, (examples, labels, example_mask, images, indicators) in enumerate(data_loader):
         if data_iter_step % accum_iter == 0:
             lr_sched.adjust_learning_rate(optimizer, data_iter_step / len(data_loader) + epoch, args)
@@ -69,6 +71,8 @@ def train_one_epoch(model: torch.nn.Module,
 
         # loss_value_reduce = misc.all_reduce_mean(loss_value)
         c_loss_value_reduce = misc.all_reduce_mean(c_loss_value)
+        actual_iters += 1
+        epoch_loss += c_loss_value_reduce
 
         if misc.is_main_process() and wandb.run is not None:
             wandb.log({"c_loss_iter": c_loss_value_reduce, "lr": lr})
@@ -76,10 +80,17 @@ def train_one_epoch(model: torch.nn.Module,
         iter_time = time.time() - start_time
         eta_time = iter_time * (total_iters - data_iter_step - 1)
         eta_time_str = str(datetime.timedelta(seconds=int(eta_time)))
+
+        MB = 1024.0 * 1024.0
+        memory = torch.cuda.max_memory_allocated() / MB
         print(f"Epoch: [{epoch:2d}], Iter: [{data_iter_step:4d}/{total_iters:<4d}], "
-              f"Eta: {eta_time_str}, Loss: {c_loss_value_reduce:.4f}, lr: {lr:.6f}")
+              f"Eta: {eta_time_str}, Loss: {c_loss_value_reduce:.4f}, lr: {lr:.6f} Mem: {memory:.0f}MB")
 
         start_time = time.time()
+
+    epoch_loss = epoch_loss / actual_iters
+    if misc.is_main_process() and wandb.run is not None:
+        wandb.log({"c_loss_epoch": epoch_loss, "epoch": epoch, "memory": memory})
     return None
 
 
