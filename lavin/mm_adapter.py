@@ -37,7 +37,12 @@ class RepAdapter_Router(nn.Module):
     def forward(self, x, weights=None):
         with autocast(dtype=self.precision):
             if weights is None:
-                weights = torch.softmax(self.expert_weights(x[:, 0]) / self.t, -1).half()
+                weights = torch.softmax(self.expert_weights(x[:, 0]) / self.t, -1)
+                if self.precision == torch.float16:
+                    weights = weights.half()
+                elif self.precision == torch.bfloat16:
+                    weights = weights.bfloat16()
+
             x = x.transpose(1, 2)
             x_ = self.dropout(self.conv_A(x))
             x = self.conv_B(x_) * self.scale * weights[:, 0, None, None] + self.conv_D(x_) * self.scale * weights[:, 1, None, None] + x
