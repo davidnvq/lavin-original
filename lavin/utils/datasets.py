@@ -194,6 +194,18 @@ class DHPRDataset:
         image = Image.alpha_composite(image, overlay)
         return image.convert('RGB')
 
+    def transform_boxes(self, boxes, image_size, resized_image_size=(224, 224)):
+        # box: [x1, y1, x2, y2]
+        new_boxes = []
+        # image_size: (width, height)
+        width, height = image_size
+        for (x1, y1, x2, y2) in boxes:
+            x1, y1 = x1 * resized_image_size[0] / width, y1 * resized_image_size[1] / height
+            x2, y2 = x2 * resized_image_size[0] / width, y2 * resized_image_size[1] / height
+            new_boxes.append([x1, y1, x2, y2])
+        new_boxes = torch.tensor(new_boxes)
+        return new_boxes  # shape: (num_boxes, 4)
+
     def get_item(self, image_id):
         item = self.anno_data[image_id]
         image_name = f'{image_id}.jpg' if '-' in image_id else f'{image_id}.png'
