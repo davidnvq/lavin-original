@@ -89,6 +89,8 @@ def load(checkpoint, tokenizer, model_params, adapter_checkpoint, args):
         s=args.adapter_scale,
         t=args.temperature,
         precision=model_args.precision,
+        num_routers=args.num_routers,
+        weight_kind=args.weight_kind,
     )
     set_Clip_Adapter(
         model.backbone.visual,

@@ -42,6 +42,8 @@ class ModelArgs:
     precision: str = 'fp16'  # 'fp16' or 'bf16'
     # Additional
     has_boxes: bool = False
+    has_indicator: bool = True
+    weight_kind: str = 'indicator_modality'
 
 
 class RMSNorm(torch.nn.Module):
@@ -341,11 +343,6 @@ class Transformer(nn.Module):
                 box_embeds.append(box_embed)
             box_embeds = torch.stack(box_embeds, dim=0)  # [B, 3, D]
 
-        if isinstance(img_indicators, list):
-            img_indicators = torch.Tensor(img_indicators).to(image_embeds.device).long()
-        modality_embed = self.adapter_modality_embedding(img_indicators.unsqueeze(1))
-        modality_embed = self._convert_dtype(modality_embed)
-
         image_embeds = self.adapter_proj(image_embeds)
         _bsz, seqlen = examples.shape
 
@@ -355,9 +352,15 @@ class Transformer(nn.Module):
 
         h, labels = self.insert_image_embeds(examples, labels, image_embeds, prefix_img, box_embeds=box_embeds)
 
-        h = torch.cat([modality_embed, h], 1)[:, :seqlen]
-        modality_labels = torch.zeros(_bsz, 1).to(labels.device).type_as(labels)
-        labels = torch.cat([modality_labels, labels], 1)[:, :seqlen]
+        if self.params.has_indicator:
+            if isinstance(img_indicators, list):
+                img_indicators = torch.Tensor(img_indicators).to(image_embeds.device).long()
+            modality_embed = self.adapter_modality_embedding(img_indicators.unsqueeze(1))
+            modality_embed = self._convert_dtype(modality_embed)
+
+            h = torch.cat([modality_embed, h], 1)[:, :seqlen]
+            modality_labels = torch.zeros(_bsz, 1).to(labels.device).type_as(labels)
+            labels = torch.cat([modality_labels, labels], 1)[:, :seqlen]
 
         freqs_cis = self.freqs_cis.to(h.device)
         freqs_cis = freqs_cis[:seqlen]

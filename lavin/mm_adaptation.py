@@ -48,13 +48,17 @@ def LaVIN(args):
 
     llama.load_state_dict(checkpoint, strict=False)
 
-    set_MMAdapter(llama,
-                  args.adapter_type,
-                  dim=args.adapter_dim,
-                  s=args.adapter_scale,
-                  t=args.temperature,
-                  gradient_checkpointing=False,
-                  precision=model_args.precision)
+    set_MMAdapter(
+        llama,
+        args.adapter_type,
+        dim=args.adapter_dim,
+        s=args.adapter_scale,
+        t=args.temperature,
+        gradient_checkpointing=False,
+        precision=model_args.precision,
+        num_routers=args.num_routers,
+        weight_kind=args.weight_kind,
+    )
 
     set_Clip_Adapter(llama.backbone.visual,
                      args.visual_adapter_type,
