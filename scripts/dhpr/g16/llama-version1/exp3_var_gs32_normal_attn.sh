@@ -1,21 +1,11 @@
-
 #!/bin/bash
 #$-S /bin/bash
 #$-cwd
 #$-ac d=none
 #$-j y
-#$-o $HOME/log/eval_exp3_var_gs16_normal_normal
-#$ -N "eval_exp3_var_gs16_normal_normal"
-#$-jc gtb-container_g1.24h
-
-#!/bin/bash
-#$-S /bin/bash
-#$-cwd
-#$-ac d=none
-#$-j y
-#$-o $HOME/log/eval_exp1_var_g16_bs16
-#$ -N "eval_exp1_var_g16_bs16"
-#$-jc gtb-container_g1.24h
+#$-o $HOME/log/exp3_var_gs32_normal_router
+#$ -N "exp3_var_gs32_normal_router"
+#$-jc gs-container_g16.24h
 
 # For internet connection
 export MY_PROXY_URL="http://10.1.10.1:8080/"
@@ -31,6 +21,13 @@ export PATH=$PATH:$JAVA_HOME/bin
 source ~/anaconda3/etc/profile.d/conda.sh
 conda activate lavin-torch2.1
 
-torchrun --nproc_per_node 1 --master_port 48467 eval_dhpr.py \
-    --adapter_path ./outputs/exp3_var_gs16_normal_normal/checkpoint-19.pth \
-    --batch_size 2
+export EXPNAME="exp3_var_gs32_normal_router"
+export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15
+torchrun --nproc_per_node 16 --master_port 13320 train_dhpr.py \
+    --wandb_enable \
+    --llm_model 7B \
+    --output_dir ./outputs/${EXPNAME} \
+    --batch_size 1 \
+    --accum_iter 2 \
+    --visual_adapter_type normal \
+    --adapter_type attn
