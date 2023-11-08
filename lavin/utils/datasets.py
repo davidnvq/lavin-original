@@ -60,7 +60,7 @@ class DHPRDataset:
         self.root_path = root
         self.max_words = max_words
         self.tokenizer = Tokenizer(model_path=osp.join(root, 'weights/tokenizer.model'))
-        self.anno_data = json.load(open(osp.join(root, f'dhpr_annotations/v1107_meta_anno_{split}.json')))
+        self.anno_data = json.load(open(osp.join(root, f'dhpr_annotations/v1108_meta_anno_{split}.json')))
         self.image_ids = list(self.anno_data.keys())
 
         print(f"Split {split}: {len(self.image_ids)} items!")
@@ -194,4 +194,11 @@ if __name__ == '__main__':
     item1 = dataset[0]  # 1 box
     item2 = dataset[1]  # 2 boxes
     batch = dhpr_collate([item1, item2])
+    print("len of dataset: ", len(dataset))
+
+    dataset = DHPRDataset(split='val', box_type='highlight', has_boxes=False)
+    print("len of dataset: ", len(dataset))
+
+    dataset = DHPRDataset(split='test', box_type='highlight', has_boxes=False)
+    print("len of dataset: ", len(dataset))
     print("OK")
