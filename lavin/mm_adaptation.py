@@ -29,6 +29,7 @@ def LaVIN(args):
                                       max_batch_size=32,
                                       hidden_proj=args.hidden_proj,
                                       drop_path=args.drop_path,
+                                      has_boxes=args.has_boxes,
                                       **params)
 
     model_args.vocab_size = tokenizer.n_words
