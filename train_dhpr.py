@@ -14,7 +14,7 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 
 import lavin.utils.misc as misc
 from lavin.utils.misc import NativeScalerWithGradNormCount
-from lavin.utils.datasets import DHPRDataset
+from lavin.utils.datasets import DHPRDataset, dhpr_collate
 from engine import train_one_epoch
 from lavin.mm_adaptation import LaVIN
 
@@ -55,6 +55,7 @@ class TrainArgs:
     dataset: str = 'dhpr'
     debug: bool = False
     has_speed: bool = False
+    has_boxes: bool = False
     prompt_id: str = 'A'
     max_words: int = 128
     output_dir: str = './outputs/debug_dhpr'
@@ -95,7 +96,12 @@ def main(**kwargs):
     misc.init_distributed_mode(args)
     if misc.is_main_process() and args.wandb_enable:
         args.output_dir = args.output_dir[:-1] if args.output_dir.endswith('/') else args.output_dir
-        wandb.init(project="lavin-original", name=args.output_dir.split("/")[-1], dir=args.output_dir, config=vars(args))
+        wandb.init(
+            project="lavin-original",
+            name=args.output_dir.split("/")[-1],
+            dir=args.output_dir,
+            config=vars(args),
+        )
         print('Experiment name: {}'.format(wandb.run.name))
 
     device = torch.device(args.device)
@@ -106,11 +112,23 @@ def main(**kwargs):
     np.random.seed(seed)
     cudnn.benchmark = True
 
-    dataset_train = DHPRDataset('train', debug=args.debug, has_speed=args.has_speed, prompt_id=args.prompt_id, max_words=args.max_words)
+    dataset_train = DHPRDataset(
+        'train',
+        debug=args.debug,
+        has_speed=args.has_speed,
+        prompt_id=args.prompt_id,
+        max_words=args.max_words,
+        has_boxes=args.has_boxes,
+    )
 
     num_tasks = misc.get_world_size()
     global_rank = misc.get_rank()
-    sampler_train = torch.utils.data.DistributedSampler(dataset_train, num_replicas=num_tasks, rank=global_rank, shuffle=True)
+    sampler_train = torch.utils.data.DistributedSampler(
+        dataset_train,
+        num_replicas=num_tasks,
+        rank=global_rank,
+        shuffle=True,
+    )
 
     print("Sampler_train = %s" % str(sampler_train))
 
@@ -123,6 +141,7 @@ def main(**kwargs):
         num_workers=args.num_workers,
         pin_memory=args.pin_mem,
         drop_last=True,
+        collate_fn=dhpr_collate,
     )
 
     # define the model
