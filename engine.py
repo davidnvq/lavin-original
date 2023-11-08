@@ -34,13 +34,19 @@ def train_one_epoch(model: torch.nn.Module,
     total_iters = len(data_loader)
     epoch_loss = torch.tensor(0.0).cuda()
     actual_iters = 0
-    for data_iter_step, (examples, labels, example_mask, images, indicators) in enumerate(data_loader):
+    for data_iter_step, (examples, labels, example_mask, images, indicators, boxes) in enumerate(data_loader):
         if data_iter_step % accum_iter == 0:
             lr_sched.adjust_learning_rate(optimizer, data_iter_step / len(data_loader) + epoch, args)
 
         prefix_img = prefix_img.to(examples.device)
         prefix_nonimg = prefix_nonimg.to(examples.device)
-        c_loss = model(examples, labels, images=images, prefix_img=prefix_img, prefix_nonimg=prefix_nonimg, img_indicators=indicators)
+        c_loss = model(examples,
+                       labels,
+                       images=images,
+                       prefix_img=prefix_img,
+                       prefix_nonimg=prefix_nonimg,
+                       img_indicators=indicators,
+                       batch_boxes=boxes)
         loss = c_loss
         loss_value = loss.item()
         c_loss_value = c_loss.item()
