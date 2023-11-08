@@ -27,8 +27,11 @@ class LaVIN_Generator:
         for i, example in enumerate(examples):
             # add box to inputs
             nontext_example = [prefix_img, image_embeds[i]]
-            nontext_example = [box_embeds[i]] + nontext_example if box_embeds is not None else nontext_example
+
+            if box_embeds is not None:
+                nontext_example = [box_embeds[i]] + nontext_example
             new_example = torch.cat([example[:1], *nontext_example, example[1:]], dim=0)  # first token is [BOS]
+
             new_example = new_example[:seqlen]  # [max_len, D]
 
             new_examples.append(new_example)
@@ -94,7 +97,7 @@ class LaVIN_Generator:
             box_embeds = torch.stack(box_embeds, dim=0)  # [B, 3, D]
 
         # [BOS] [boxes] token_embed("Image: ") [image_embed] [token_embed] [PAD] [PAD] ...
-        self.insert_image_embeds(token_embeds, image_embeds, prefix_img_embed, box_embeds=box_embeds)
+        token_embeds = self.insert_image_embeds(token_embeds, image_embeds, prefix_img_embed, box_embeds=box_embeds)
 
         indicators = torch.Tensor(indicators).cuda().long()  # [B,]
         modality_embedding = self.model.adapter_modality_embedding(indicators).unsqueeze(1)  # [B, 1, D]
@@ -104,7 +107,7 @@ class LaVIN_Generator:
         for cur_pos in range(start_pos, total_len):
 
             if prev_pos == 0:
-                h = torch.cat([modality_embedding, token_embeds[:, prev_pos:cur_pos]], 1)
+                h = torch.cat([modality_embedding, token_embeds[:, prev_pos:cur_pos]], dim=1)
             else:
                 h = token_embeds[:, prev_pos:cur_pos]
             logits = self.model.forward(h, prev_pos)
