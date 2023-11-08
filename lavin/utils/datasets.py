@@ -129,7 +129,9 @@ class DHPRDataset:
                  n_pix=224,
                  prompt_id='A',
                  has_speed=False,
-                 debug=False):
+                 debug=False,
+                 has_boxes=False):
+        self.has_boxes = has_boxes
         self.debug = debug
         self.split = split
         self.root_path = root
@@ -222,6 +224,7 @@ class DHPRDataset:
         image_name = f'{image_id}.jpg' if '-' in image_id else f'{image_id}.png'
         image = Image.open(os.path.join(self.root_path, 'dhpr_images', image_name)).convert('RGB')
         image = self.hide_region(image, item['bounding_box'])
+        image_size = image.size
 
         if do_transform:
             image = self.transforms(image)
@@ -232,11 +235,16 @@ class DHPRDataset:
         prompt = self.prompt
         if self.has_speed:
             prompt = f'Our car has the plausible speed of {item["plausible_speed"]}.' + prompt
-        if self.split != 'train':
-            return image, indicator, prompt, answer, image_id
 
-        example, labels, example_mask, label_mask = self.tokenize(prompt, answer)
-        return example, labels, example_mask, image, indicator
+        boxes = None
+        if self.has_boxes:
+            boxes = self.transform_boxes(item['bounding_box'], image_size)
+
+        if self.split != 'train':  # val or test
+            return image, indicator, prompt, answer, image_id, boxes
+        else:  # train
+            example, labels, example_mask, label_mask = self.tokenize(prompt, answer)
+            return example, labels, example_mask, image, indicator, boxes
 
     def __len__(self):
         if self.debug:
@@ -244,7 +252,23 @@ class DHPRDataset:
         return len(self.anno_data)
 
 
+def dhpr_collate(batch):
+    from torch.utils.data import default_collate
+    new_batch = []
+    if batch[0][-1] is None:  # no boxes
+        new_batch = default_collate([item[:-1] for item in batch])
+        new_batch.append(None)
+    else:
+        new_batch = default_collate([item[:-1] for item in batch])
+        boxes = [item[-1] for item in batch]
+        new_batch.append(boxes)
+    return new_batch
+
+
 if __name__ == '__main__':
-    dataset = DHPRDataset(split='train', box_type='highlight')
-    example, labels, example_mask, image, indicator = dataset[0]
+    dataset = DHPRDataset(split='train', box_type='highlight', has_boxes=False)
+    example, labels, example_mask, image, indicator, boxes = dataset[0]
+    item1 = dataset[0]  # 1 box
+    item2 = dataset[1]  # 2 boxes
+    batch = dhpr_collate([item1, item2])
     print("OK")
