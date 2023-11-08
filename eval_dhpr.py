@@ -164,7 +164,7 @@ def main(adapter_path="./outputs/exp1_dhpr_7b01_gt4/checkpoint-19.pth", has_boxe
     ckpt_name = os.path.basename(adapter_path).split('.')[0]
     new_ckpt_name = get_name(ckpt_name)
 
-    if not eval_args.debug and eval_args.wandb_enable:
+    if (not eval_args.debug) and eval_args.wandb_enable:
         wandb.init(project="lavin-original",
                    name='e7-' + new_ckpt_name + '-' + proj_name,
                    dir=os.path.dirname(adapter_path),
@@ -211,7 +211,7 @@ def main(adapter_path="./outputs/exp1_dhpr_7b01_gt4/checkpoint-19.pth", has_boxe
         total_batches = len(dataloader)
 
         if eval_args.debug:
-            total_batches = 100  # len(dataloader)
+            total_batches = 4  # len(dataloader)
 
         start_time = time.time()
         for idx, (images, indicators, prompts, gt_answers, image_ids, batch_boxes) in zip(range(total_batches), dataloader):

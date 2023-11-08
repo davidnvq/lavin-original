@@ -215,12 +215,12 @@ class Transformer(nn.Module):
         self.adapter_proj = AdapterMLP(1024, params.hidden_proj, params.dim).float()
         self.adapter_modality_embedding = nn.Embedding(2, params.dim).float()
 
-        self.has_boxes = params.has_boxes
-        if self.has_boxes:  # box embeddings
-            self.input_image_size = (224, 224)
-            self.pe_layer = PositionEmbeddingRandom(params.dim // 2).float()
-            self.point_embeddings = nn.ModuleList([nn.Embedding(1, params.dim).float() for i in range(2)])
-            self.no_box_embedding = nn.Embedding(1, params.dim).float()
+        # self.has_boxes = params.has_boxes
+        # if self.has_boxes:  # box embeddings
+        #     self.input_image_size = (224, 224)
+        #     self.pe_layer = PositionEmbeddingRandom(params.dim // 2).float()
+        #     self.point_embeddings = nn.ModuleList([nn.Embedding(1, params.dim).float() for i in range(2)])
+        #     self.no_box_embedding = nn.Embedding(1, params.dim).float()
 
     def _embed_boxes(self, boxes: torch.Tensor) -> torch.Tensor:
         # boxes of 1 image: [N, 4] where N <= 3
