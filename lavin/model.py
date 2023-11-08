@@ -303,8 +303,8 @@ class Transformer(nn.Module):
             if img_indicators[i] > 0.:  # has image
                 # add box to inputs
                 nontext_example = [prefix_img, image_embeds[i]]
-                nontext_example = nontext_example + [box_embeds] if box_embeds is not None else nontext_example
-                new_example = torch.cat([example[:1], prefix_img, image_embeds[i], example[1:]], 0)  # first token is indicator
+                nontext_example = [box_embeds[i]] + nontext_example if box_embeds is not None else nontext_example
+                new_example = torch.cat([example[:1], *nontext_example, example[1:]], 0)  # first token is indicator
 
                 # add box to label
                 nontext_label = torch.zeros(prefix_img.shape[0] + image_embeds.shape[1] + box_embeds.shape[1] if box_embeds is not None else 0)
