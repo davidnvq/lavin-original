@@ -163,9 +163,10 @@ class DHPRDataset:
         if self.has_boxes:
             boxes = self.transform_boxes(item['bounding_box'], image_size)
 
-        if self.split != 'train':  # val or test
+        if self.split == 'val' or self.split == 'test':  # val or test
             return image, indicator, prompt, answer, image_id, boxes
-        else:  # train
+
+        elif self.split == 'train':  # train
             example, labels, example_mask, label_mask = self.tokenize(prompt, answer)
             return example, labels, example_mask, image, indicator, boxes
 
