@@ -6,6 +6,48 @@ from torch.cuda.amp import autocast
 import lavin.eval_model
 
 
+class RepAdapter_Boxes(nn.Module):
+    """ Pytorch Implemention of RepAdapter for 1d tensor"""
+
+    def __init__(self, in_features=768, hidden_dim=8, groups=2, scale=1, t=10., num_adapters=3, precision='fp16'):
+        super().__init__()
+
+        self.precision = {'fp16': torch.float16, 'bf16': torch.bfloat16}[precision]
+
+        self.conv_A = nn.Conv1d(in_features, hidden_dim, 1, groups=1, bias=True)
+        self.conv_B = nn.ModuleList([nn.Conv1d(hidden_dim, in_features, 1, groups=groups, bias=True) for _ in range(num_adapters)])
+
+        self.expert_weights = nn.Linear(in_features, num_adapters)
+        self.dropout = nn.Dropout(0.1)
+        self.groups = groups
+        self.scale = scale
+        self.t = t
+
+        nn.init.xavier_uniform_(self.conv_A.weight)
+        nn.init.zeros_(self.conv_A.bias)
+        for i in range(len(self.conv_B)):
+            nn.init.zeros_(self.conv_B[i].weight)
+            nn.init.zeros_(self.conv_B[i].bias)
+
+    def forward(self, x, weights=None):
+        with autocast(dtype=self.precision):
+            if weights is None:
+                weights = torch.softmax(self.expert_weights(x[:, 0]) / self.t, -1)
+                if self.precision == torch.float16:
+                    weights = weights.half()
+                elif self.precision == torch.bfloat16:
+                    weights = weights.bfloat16()
+
+            x = x.transpose(1, 2)
+            h = self.dropout(self.conv_A(x))
+
+            for i in range(len(self.conv_B)):
+                x += self.conv_B[i](h) * self.scale * weights[:, i, None, None]
+
+            x = x.transpose(1, 2).contiguous()
+        return x
+
+
 class RepAdapter_Router(nn.Module):
     """ Pytorch Implemention of RepAdapter for 1d tensor"""
 
