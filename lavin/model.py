@@ -294,24 +294,24 @@ class Transformer(nn.Module):
             box_embedding = torch.cat([box_embedding, no_box_embedding], dim=0)  # [N, 4096]
         return box_embedding  # [N, 4096]
 
-    def insert_image_embeds(self, examples, labels, image_embeds, prefix_img, prefix_nonimg, img_indicators, box_embeds=None):
+    def insert_image_embeds(self, examples, labels, image_embeds, prefix_img, box_embeds=None):
         # insert image, box, and indicator into the text input/label
         _bsz, seqlen, _ = examples.shape
         new_examples = []
         new_labels = []
+
         for i, (example, label) in enumerate(zip(examples, labels)):
-            if img_indicators[i] > 0.:  # has image
-                # add box to inputs
-                nontext_example = [prefix_img, image_embeds[i]]
-                nontext_example = [box_embeds[i]] + nontext_example if box_embeds is not None else nontext_example
-                new_example = torch.cat([example[:1], *nontext_example, example[1:]], 0)  # first token is indicator
+            # add box to inputs
+            nontext_example = [prefix_img, image_embeds[i]]
+            nontext_example = [box_embeds[i]] + nontext_example if box_embeds is not None else nontext_example
+            new_example = torch.cat([example[:1], *nontext_example, example[1:]], 0)  # first token is [BOS]
 
-                # add box to label
-                nontext_label = torch.zeros(prefix_img.shape[0] + image_embeds.shape[1] + box_embeds.shape[1] if box_embeds is not None else 0)
-                new_label = torch.cat([label[:1], nontext_label.to(examples.device).type_as(labels), label[1:]])
+            # add box to label
+            nontext_label = torch.zeros(prefix_img.shape[0] + image_embeds.shape[1] + box_embeds.shape[1] if box_embeds is not None else 0)
+            new_label = torch.cat([label[:1], nontext_label.to(examples.device).type_as(labels), label[1:]])
 
-                new_example = new_example[:seqlen]
-                new_label = new_label[:seqlen]
+            new_example = new_example[:seqlen]
+            new_label = new_label[:seqlen]
 
             new_examples.append(new_example.unsqueeze(0))
             new_labels.append(new_label.unsqueeze(0))
@@ -325,7 +325,7 @@ class Transformer(nn.Module):
         elif self.params.precision == 'bf16':
             return x.bfloat16()
 
-    def forward(self, examples, labels, images=None, prefix_img=None, prefix_nonimg=None, img_indicators=None, batch_boxes=None):
+    def forward(self, examples, labels, images=None, prefix_img=None, prefix_box=None, img_indicators=None, batch_boxes=None):
 
         # print(images.dtype)
         image_embeds = self.backbone.encode_image(images)
@@ -351,9 +351,9 @@ class Transformer(nn.Module):
 
         examples = self.tok_embeddings(examples)
         prefix_img = self.tok_embeddings(prefix_img.unsqueeze(0)).squeeze(0)
-        prefix_nonimg = self.tok_embeddings(prefix_nonimg.unsqueeze(0)).squeeze(0)
+        # prefix_box = self.tok_embeddings(prefix_box.unsqueeze(0)).squeeze(0)
 
-        h, labels = self.insert_image_embeds(examples, labels, image_embeds, prefix_img, prefix_nonimg, img_indicators, box_embeds)
+        h, labels = self.insert_image_embeds(examples, labels, image_embeds, prefix_img, box_embeds=box_embeds)
 
         h = torch.cat([modality_embed, h], 1)[:, :seqlen]
         modality_labels = torch.zeros(_bsz, 1).to(labels.device).type_as(labels)
