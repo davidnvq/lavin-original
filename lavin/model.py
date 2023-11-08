@@ -271,9 +271,9 @@ class Transformer(nn.Module):
 
         if self.has_boxes:  # box embeddings
             self.input_image_size = (224, 224)
-            self.pe_layer = PositionEmbeddingRandom(params.dim // 2)
-            self.point_embeddings = nn.ModuleList([nn.Embedding(1, params.dim) for i in range(2)])
-            self.no_point_embeddings = nn.ModuleList([nn.Embedding(1, params.dim) for i in range(2)])  # 2 box corners
+            self.pe_layer = PositionEmbeddingRandom(params.dim // 2).float()
+            self.point_embeddings = nn.ModuleList([nn.Embedding(1, params.dim).float() for i in range(2)])
+            self.no_box_embedding = nn.Embedding(1, params.dim).float()
 
     def _embed_boxes(self, boxes: torch.Tensor) -> torch.Tensor:
         # boxes: [N, 4] where N <= 3
@@ -293,7 +293,7 @@ class Transformer(nn.Module):
             box_embedding = torch.cat([box_embedding, no_box_embedding], dim=0)  # [N, 4096]
         return box_embedding  # [N, 4096]
 
-    def insert_image_embeds(self, examples, labels, image_embeds, prefix_img, prefix_nonimg, img_indicators):
+    def insert_image_embeds(self, examples, labels, image_embeds, prefix_img, prefix_nonimg, img_indicators, box_embeds=None):
         _bsz, seqlen, _ = examples.shape
         new_examples = []
         new_labels = []
@@ -324,6 +324,7 @@ class Transformer(nn.Module):
         image_embeds = self._convert_dtype(image_embeds)
 
         # box embeddings
+        box_embeds = None
         if self.has_boxes:
             box_embeds = []
             for image_boxes in batch_boxes:
