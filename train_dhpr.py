@@ -32,9 +32,10 @@ class TrainArgs:
     use_vicuna: bool = False
     cpu_load: bool = False
     visual_adapter_type: str = 'router'  # normal, router_block,
+    has_indicator: bool = True
     adapter_type: str = 'attn'  # normal, attn, adapter_box
     num_routers: int = 3
-    weight_kind: str = 'indicator_modality'  # if adapter_type = 'adapter_box', then weight_kind = 'learn' or 'fixed', 'indicator_modality', 'box_modality'
+    weight_kind: str = 'box_modality'  # if adapter_type = 'adapter_box', then weight_kind = 'learn' or 'fixed', 'indicator_modality', 'box_modality'
     adapter_dim: int = 8
     hidden_proj: int = 128
     temperature: float = 10.
@@ -83,6 +84,8 @@ def init_args(**kwargs):
         args.batch_size = 2
         args.epochs = 2
         args.num_workers = 0
+    if kwargs.get('no_indicator', 'False'):
+        args.has_indicator = False
 
     for k, v in asdict(args).items():
         print(f"{k:<20}: {v}")
