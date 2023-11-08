@@ -31,7 +31,7 @@ torchrun --nproc_per_node 16 --master_port 13320 train_dhpr.py \
     --accum_iter 2 \
     --visual_adapter_type router_block \
     --adapter_type attn \
-    --has_box
+    --has_boxes
 
 
 export EXPNAME="exp5_var_gs16_boxadapter_indicatormodality"
@@ -43,6 +43,6 @@ torchrun --nproc_per_node 16 --master_port 13320 train_dhpr.py \
     --batch_size 1 \
     --accum_iter 2 \
     --visual_adapter_type router_block \
-    --has_box \
+    --has_boxes \
     --adapter_type adapter_box \
     --weight_kind indicator_modality

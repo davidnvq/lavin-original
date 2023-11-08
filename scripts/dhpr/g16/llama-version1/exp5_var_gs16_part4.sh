@@ -31,7 +31,7 @@ torchrun --nproc_per_node 16 --master_port 13320 train_dhpr.py \
     --batch_size 1 \
     --accum_iter 2 \
     --visual_adapter_type router_block \
-    --has_box \
+    --has_boxes \
     --adapter_type adapter_box \
     --weight_kind fixed
 
@@ -45,7 +45,7 @@ torchrun --nproc_per_node 16 --master_port 13320 train_dhpr.py \
     --batch_size 1 \
     --accum_iter 2 \
     --visual_adapter_type router_block \
-    --has_box \
+    --has_boxes \
     --adapter_type adapter_box \
     --weight_kind fixed \
     --no_indicator
