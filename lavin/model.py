@@ -1,6 +1,7 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 # This software may be used and distributed according to the terms of the GNU General Public License version 3.
 
+from email.mime import image
 from typing import Optional, Tuple, Any
 from dataclasses import dataclass
 import math
@@ -294,14 +295,21 @@ class Transformer(nn.Module):
         return box_embedding  # [N, 4096]
 
     def insert_image_embeds(self, examples, labels, image_embeds, prefix_img, prefix_nonimg, img_indicators, box_embeds=None):
+        # insert image, box, and indicator into the text input/label
         _bsz, seqlen, _ = examples.shape
         new_examples = []
         new_labels = []
         for i, (example, label) in enumerate(zip(examples, labels)):
             if img_indicators[i] > 0.:  # has image
-                new_example = torch.cat([example[:1], prefix_img, image_embeds[i], example[1:]], 0)
-                new_label = torch.cat(
-                    [label[:1], torch.zeros(prefix_img.shape[0] + image_embeds.shape[1]).to(examples.device).type_as(labels), label[1:]])
+                # add box to inputs
+                nontext_example = [prefix_img, image_embeds[i]]
+                nontext_example = nontext_example + [box_embeds] if box_embeds is not None else nontext_example
+                new_example = torch.cat([example[:1], prefix_img, image_embeds[i], example[1:]], 0)  # first token is indicator
+
+                # add box to label
+                nontext_label = torch.zeros(prefix_img.shape[0] + image_embeds.shape[1] + box_embeds.shape[1] if box_embeds is not None else 0)
+                new_label = torch.cat([label[:1], nontext_label.to(examples.device).type_as(labels), label[1:]])
+
                 new_example = new_example[:seqlen]
                 new_label = new_label[:seqlen]
 
