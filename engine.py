@@ -28,7 +28,7 @@ def train_one_epoch(model: torch.nn.Module,
     optimizer.zero_grad()
 
     prefix_img = torch.tensor(data_loader.dataset.tokenizer.encode("Image: ", bos=False, eos=False), dtype=torch.int64)
-    prefix_nonimg = torch.tensor(data_loader.dataset.tokenizer.encode("Image: N/A", bos=False, eos=False), dtype=torch.int64)
+    # prefix_box = torch.tensor(data_loader.dataset.tokenizer.encode("Entity Boxes: ", bos=False, eos=False), dtype=torch.int64)
 
     start_time = time.time()
     total_iters = len(data_loader)
@@ -39,14 +39,8 @@ def train_one_epoch(model: torch.nn.Module,
             lr_sched.adjust_learning_rate(optimizer, data_iter_step / len(data_loader) + epoch, args)
 
         prefix_img = prefix_img.to(examples.device)
-        prefix_nonimg = prefix_nonimg.to(examples.device)
-        c_loss = model(examples,
-                       labels,
-                       images=images,
-                       prefix_img=prefix_img,
-                       prefix_nonimg=prefix_nonimg,
-                       img_indicators=indicators,
-                       batch_boxes=boxes)
+        # prefix_box = prefix_box.to(examples.device)
+        c_loss = model(examples, labels, images=images, prefix_img=prefix_img, img_indicators=indicators, batch_boxes=boxes)
         loss = c_loss
         loss_value = loss.item()
         c_loss_value = c_loss.item()
