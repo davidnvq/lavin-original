@@ -15,22 +15,7 @@ from fairscale.nn.model_parallel.layers import (
     RowParallelLinear,
     ColumnParallelLinear,
 )
-from lavin.model import AdapterMLP
-
-
-@dataclass
-class ModelArgs:
-    dim: int = 512
-    n_layers: int = 8
-    n_heads: int = 8
-    vocab_size: int = -1  # defined later by tokenizer
-    multiple_of: int = 256  # make SwiGLU hidden layer size multiple of large power of 2
-    norm_eps: float = 1e-5
-    hidden_proj: int = 128
-
-    max_batch_size: int = 32
-    max_seq_len: int = 2048
-    precision: str = 'fp16'
+from lavin.model import AdapterMLP, PositionEmbeddingRandom, ModelArgs
 
 
 class RMSNorm(torch.nn.Module):
@@ -229,6 +214,37 @@ class Transformer(nn.Module):
 
         self.adapter_proj = AdapterMLP(1024, params.hidden_proj, params.dim).float()
         self.adapter_modality_embedding = nn.Embedding(2, params.dim).float()
+
+        self.has_boxes = params.has_boxes
+        if self.has_boxes:  # box embeddings
+            self.input_image_size = (224, 224)
+            self.pe_layer = PositionEmbeddingRandom(params.dim // 2).float()
+            self.point_embeddings = nn.ModuleList([nn.Embedding(1, params.dim).float() for i in range(2)])
+            self.no_box_embedding = nn.Embedding(1, params.dim).float()
+
+    def _embed_boxes(self, boxes: torch.Tensor) -> torch.Tensor:
+        # boxes of 1 image: [N, 4] where N <= 3
+
+        boxes = boxes + 0.5  # Shift to center of pixel
+        coords = boxes.reshape(-1, 2, 2)  # 2 box corners [B, 2-corners, 2-coords]
+        corner_embedding = self.pe_layer.forward_with_coords(coords, self.input_image_size)
+        corner_embedding[:, 0, :] += self.point_embeddings[0].weight  # box corner 1
+        corner_embedding[:, 1, :] += self.point_embeddings[1].weight  # box corner 2
+
+        box_embedding = corner_embedding.sum(dim=1)  # [N, 4096]
+        desired_N = 3
+        if box_embedding.shape[0] < desired_N:
+            no_box_embedding = self.no_box_embedding.weight  # [1, 4096]
+            no_box_embedding = no_box_embedding.repeat(desired_N - box_embedding.shape[0], 1)  # [M, 4096]
+            # Repeat the same corner embedding for the rest of the boxes
+            box_embedding = torch.cat([box_embedding, no_box_embedding], dim=0)  # [N, 4096]
+        return box_embedding  # [N, 4096]
+
+    def _convert_dtype(self, x):
+        if self.params.precision == 'fp16':
+            return x.half()
+        elif self.params.precision == 'bf16':
+            return x.bfloat16()
 
     @torch.inference_mode()
     def forward(self, tokens: torch.Tensor, start_pos: int):

@@ -23,7 +23,7 @@ import re
 from aac_metrics import evaluate
 
 import warnings
-from lavin.utils.datasets import DHPRDataset
+from lavin.utils.datasets import DHPRDataset, dhpr_collate
 
 from pathlib import Path
 import fairscale.nn.model_parallel.initialize as fs_init
@@ -62,7 +62,13 @@ def _load_and_redistribute_checkpoint(llama_model_path, model_name):
 def load(checkpoint, tokenizer, model_params, adapter_checkpoint, args):
     start_time = time.time()
 
-    model_args = ModelArgs(max_seq_len=256, max_batch_size=4, hidden_proj=args.hidden_proj, **model_params)
+    model_args = ModelArgs(
+        max_seq_len=256,
+        max_batch_size=4,
+        hidden_proj=args.hidden_proj,
+        has_boxes=args.has_boxes,
+        **model_params,
+    )
     model_args.vocab_size = tokenizer.n_words
 
     if model_args.precision == 'bf16':
@@ -139,7 +145,7 @@ def get_name(filename="checkpoint-12.pth"):
         return filename
 
 
-def main(adapter_path="./outputs/exp1_dhpr_7b01_gt4/checkpoint-19.pth", **kwargs):
+def main(adapter_path="./outputs/exp1_dhpr_7b01_gt4/checkpoint-19.pth", has_boxes=False, **kwargs):
     local_rank, world_size = setup_model_parallel()
     redefine_print()
 
@@ -158,7 +164,7 @@ def main(adapter_path="./outputs/exp1_dhpr_7b01_gt4/checkpoint-19.pth", **kwargs
     ckpt_name = os.path.basename(adapter_path).split('.')[0]
     new_ckpt_name = get_name(ckpt_name)
 
-    if not eval_args.debug:
+    if not eval_args.debug and eval_args.wandb_enable:
         wandb.init(project="lavin-original",
                    name='e7-' + new_ckpt_name + '-' + proj_name,
                    dir=os.path.dirname(adapter_path),
@@ -167,11 +173,18 @@ def main(adapter_path="./outputs/exp1_dhpr_7b01_gt4/checkpoint-19.pth", **kwargs
     checkpoint, tokenizer, model_params = _load_and_redistribute_checkpoint(eval_args.llama_model_path, eval_args.llm_model)
     generator = load(checkpoint, tokenizer, model_params, adapter_checkpoint, eval_args)
 
-    for split in ['val_indirect', 'val_direct', 'test_indirect', 'test_direct']:
+    for split in ['val', 'test']:
         print('split: ', split)
 
-        dataset = DHPRDataset(split=split, max_words=256)
-        dataloader = torch.utils.data.DataLoader(dataset, batch_size=eval_args.batch_size, shuffle=False, num_workers=4, pin_memory=True)
+        dataset = DHPRDataset(split=split, max_words=256, has_boxes=eval_args.has_boxes)
+        dataloader = torch.utils.data.DataLoader(
+            dataset,
+            batch_size=eval_args.batch_size,
+            shuffle=False,
+            num_workers=4,
+            pin_memory=True,
+            collate_fn=dhpr_collate,
+        )
 
         ret = {}
         predictions = []
@@ -201,15 +214,18 @@ def main(adapter_path="./outputs/exp1_dhpr_7b01_gt4/checkpoint-19.pth", **kwargs
             total_batches = 100  # len(dataloader)
 
         start_time = time.time()
-        for idx, (images, indicators, prompts, gt_answers, image_ids) in zip(range(total_batches), dataloader):
-            preds, responses = generator.generate(prompts,
-                                                  images=images,
-                                                  indicators=indicators,
-                                                  max_gen_len=128,
-                                                  temperature=eval_args.generation_temperature,
-                                                  top_p=eval_args.top_p,
-                                                  n_feats=eval_args.n_prompt,
-                                                  only_response=True)
+        for idx, (images, indicators, prompts, gt_answers, image_ids, batch_boxes) in zip(range(total_batches), dataloader):
+            preds, responses = generator.generate(
+                prompts,
+                images=images,
+                indicators=indicators,
+                max_gen_len=128,
+                temperature=eval_args.generation_temperature,
+                top_p=eval_args.top_p,
+                n_feats=eval_args.n_prompt,
+                only_response=True,
+                batch_boxes=batch_boxes,
+            )
 
             for pred, response, image_id, gt_answer in zip(preds, responses, image_ids, gt_answers):
                 ret[image_id] = {'pred': pred, 'response': response, 'gt_answer': gt_answer}

@@ -1,6 +1,7 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 # This software may be used and distributed according to the terms of the GNU General Public License version 3.
 
+from sys import prefix
 from typing import List
 
 import torch
@@ -19,18 +20,19 @@ class LaVIN_Generator:
 
         # self.backbone = clip.load('ViT-B/16', device='cpu')[0]
 
-    def insert_image_embeds(self, examples, image_embeds, prefix_img, prefix_nonimg, img_indicators):
+    def insert_image_embeds(self, examples, image_embeds, prefix_img, box_embeds=None):
+        # insert image, box, and indicator into the text input/label
         _bsz, seqlen, _ = examples.shape
         new_examples = []
         for i, example in enumerate(examples):
-            if img_indicators[i] > 0.:
-                new_example = torch.cat([example[:1], prefix_img, image_embeds[i], example[1:]], 0)
-                new_example = new_example[:seqlen]
-            else:
-                new_example = torch.cat([example[:1], prefix_nonimg, example[1:]], 0)
-                new_example = new_example[:seqlen]
-            new_examples.append(new_example.unsqueeze(0))
-        new_examples = torch.cat(new_examples, 0)
+            # add box to inputs
+            nontext_example = [prefix_img, image_embeds[i]]
+            nontext_example = [box_embeds[i]] + nontext_example if box_embeds is not None else nontext_example
+            new_example = torch.cat([example[:1], *nontext_example, example[1:]], dim=0)  # first token is [BOS]
+            new_example = new_example[:seqlen]  # [max_len, D]
+
+            new_examples.append(new_example)
+        new_examples = torch.stack(new_examples, dim=0)  # [B, max_len, D]
         return new_examples
 
     @torch.inference_mode()
@@ -44,52 +46,58 @@ class LaVIN_Generator:
         temperature: float = 0.8,
         top_p: float = 0.95,
         only_response: bool = False,
+        batch_boxes=None,
     ) -> List[str]:
         bsz = len(prompts)
         params = self.model.params
         assert bsz <= params.max_batch_size, (bsz, params.max_batch_size)
         self.model.eval()
 
-        prefix_img_token = self.tokenizer.encode("Image: ", bos=True, eos=False)
-        non_prefix_img_token = self.tokenizer.encode("Image: N/A", bos=True, eos=False)
+        prefix_img = torch.tensor(self.tokenizer.encode("Image: ", bos=False, eos=False), dtype=torch.int64)
+        prefix_img = prefix_img.cuda()  # 3 tokens -> shape of [3,]
+        prefix_img_embed = self.model.tok_embeddings(prefix_img.unsqueeze(0)).squeeze(0)  # [3, D]
 
-        images = images.cuda()
-        self.model.backbone.cuda()
+        # text encoding
+        _tokens = []
+        for i, prompt in enumerate(prompts):
+            token_idx = self.tokenizer.encode(prompt, bos=True, eos=False)
+            _tokens.append(token_idx)
 
-        image_embeds = self.model.backbone.encode_image(images)
-        image_embeds = self.model.adapter_proj(image_embeds)
-
-        prompt_tokens = []
-        for i, x in enumerate(prompts):
-            if indicators[i] == 1:
-                token_idx = prefix_img_token + [0] * n_feats + self.tokenizer.encode(x, bos=False, eos=False)
-            else:
-                token_idx = non_prefix_img_token + self.tokenizer.encode(x, bos=False, eos=False)
-            prompt_tokens.append(token_idx)
-
-        min_prompt_size = min([len(t) for t in prompt_tokens])
-        max_prompt_size = max([len(t) for t in prompt_tokens])
+        min_prompt_size = min([len(t) for t in _tokens])
+        max_prompt_size = max([len(t) for t in _tokens])
 
         total_len = min(params.max_seq_len, max_gen_len + max_prompt_size)
 
-        tokens = torch.full((bsz, total_len), 0).cuda().long()
+        tokens = torch.full((bsz, total_len), 0).cuda().long()  # [B, max_len]
         input_text_mask = torch.zeros_like(tokens).bool()
-
-        for k, t in enumerate(prompt_tokens):
+        for idx, t in enumerate(_tokens):
             t = t[:total_len]
-            tokens[k, :len(t)] = torch.tensor(t).long()
-            input_text_mask[k, :len(t)] = True
+            tokens[idx, :len(t)] = torch.tensor(t).long()
+            input_text_mask[idx, :len(t)] = True
+        token_embeds = self.model.tok_embeddings(tokens)  # [B, max_len, D]
 
-        token_embeds = self.model.tok_embeddings(tokens)
-        indicators = torch.Tensor(indicators).cuda().long()
-        modality_embedding = self.model.adapter_modality_embedding(indicators).unsqueeze(1)
+        # image encoding
+        images = images.cuda()  # [B, 3, 224, 224]
+        self.model.backbone.cuda()
+        image_embeds = self.model.backbone.encode_image(images)  # [B, 6, d']
+        image_embeds = self.model.adapter_proj(image_embeds)  # [B, 6, D]
 
-        for i in range(len(token_embeds)):
-            if indicators[i] == 1:
-                pos = len(prefix_img_token)
-                #insert image emebedding into the sequence
-                image_token_embed = torch.cat([token_embeds[i, :pos], image_embeds[i], token_embeds[i, pos + n_feats:]], 0)
-                token_embeds[i] = image_token_embed
+        # box encoding
+        max_boxes_per_image = 3
+        box_embeds = None
+        if self.model.has_boxes:
+            box_embeds = []
+            for image_boxes in batch_boxes:
+                box_embed = self.model._embed_boxes(image_boxes.cuda())  # [3, D]
+                box_embed = self.model._convert_dtype(box_embed)  # [3, D]
+                box_embeds.append(box_embed)
+            box_embeds = torch.stack(box_embeds, dim=0)  # [B, 3, D]
+
+        # [BOS] [boxes] token_embed("Image: ") [image_embed] [token_embed] [PAD] [PAD] ...
+        self.insert_image_embeds(token_embeds, image_embeds, prefix_img_embed, box_embeds=box_embeds)
+
+        indicators = torch.Tensor(indicators).cuda().long()  # [B,]
+        modality_embedding = self.model.adapter_modality_embedding(indicators).unsqueeze(1)  # [B, 1, D]
 
         start_pos = min_prompt_size
         prev_pos = 0
@@ -100,14 +108,15 @@ class LaVIN_Generator:
             else:
                 h = token_embeds[:, prev_pos:cur_pos]
             logits = self.model.forward(h, prev_pos)
+
             if temperature > 0:
                 probs = torch.softmax(logits / temperature, dim=-1)
                 next_token = sample_top_p(probs, top_p)
             else:
                 next_token = torch.argmax(logits, dim=-1)
             next_token = next_token.reshape(-1)
-            # only replace token if prompt has already been generated
 
+            # only replace token if prompt has already been generated
             next_token_embeds = torch.where(input_text_mask[:, cur_pos, None], token_embeds[:, cur_pos], self.model.tok_embeddings(next_token))
             token_embeds[:, cur_pos] = next_token_embeds
 
@@ -120,7 +129,7 @@ class LaVIN_Generator:
         decoded_responses = []
         for i, t in enumerate(tokens.tolist()):
             # cut to max gen len
-            t = t[:len(prompt_tokens[i]) + max_gen_len]
+            t = t[:len(_tokens[i]) + max_gen_len]
             # cut to eos tok if any
             try:
                 t = t[:t.index(self.tokenizer.eos_id)]
@@ -129,7 +138,7 @@ class LaVIN_Generator:
             decoded.append(self.tokenizer.decode(t))
 
             # cut the prefix prompt
-            response = t[len(prompt_tokens[i]):]
+            response = t[len(_tokens[i]):]
             decoded_responses.append(self.tokenizer.decode(response))
 
         if only_response:
