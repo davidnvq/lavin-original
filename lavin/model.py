@@ -39,6 +39,8 @@ class ModelArgs:
     max_seq_len: int = 2048
     drop_path: float = 0.
     precision: str = 'fp16'  # 'fp16' or 'bf16'
+    # Additional
+    has_boxes: bool = False
 
 
 class RMSNorm(torch.nn.Module):
@@ -246,8 +248,9 @@ class Transformer(nn.Module):
         self.params = params
         self.vocab_size = params.vocab_size
         self.n_layers = params.n_layers
-        self.tok_embeddings = Embedding(params.vocab_size, params.dim)
+        self.has_boxes = params.has_boxes
 
+        self.tok_embeddings = Embedding(params.vocab_size, params.dim)
         self.criterion = torch.nn.CrossEntropyLoss(ignore_index=0)
 
         # with init_empty_weights():
@@ -266,73 +269,82 @@ class Transformer(nn.Module):
         self.adapter_proj = AdapterMLP(1024, params.hidden_proj, params.dim, precision=params.precision).float()
         self.adapter_modality_embedding = nn.Embedding(2, params.dim).float()
 
-        # box embeddings
-        self.input_image_size = 224
-        self.pe_layer = PositionEmbeddingRandom(params.dim // 2)
-        point_embeddings = [nn.Embedding(1, params.dim) for i in range(2)]  # 2 box corners
-        self.point_embeddings = nn.ModuleList(point_embeddings)
+        if self.has_boxes:  # box embeddings
+            self.input_image_size = (224, 224)
+            self.pe_layer = PositionEmbeddingRandom(params.dim // 2)
+            self.point_embeddings = nn.ModuleList([nn.Embedding(1, params.dim) for i in range(2)])
+            self.no_point_embeddings = nn.ModuleList([nn.Embedding(1, params.dim) for i in range(2)])  # 2 box corners
 
     def _embed_boxes(self, boxes: torch.Tensor) -> torch.Tensor:
-        """Embeds box prompts."""
+        # boxes: [N, 4] where N <= 3
+
         boxes = boxes + 0.5  # Shift to center of pixel
-        coords = boxes.reshape(-1, 2, 2)
+        coords = boxes.reshape(-1, 2, 2)  # 2 box corners [B, 2-corners, 2-coords]
         corner_embedding = self.pe_layer.forward_with_coords(coords, self.input_image_size)
-        corner_embedding[:, 0, :] += self.point_embeddings[0].weight
-        corner_embedding[:, 1, :] += self.point_embeddings[1].weight
-        return corner_embedding
+        corner_embedding[:, 0, :] += self.point_embeddings[0].weight  # box corner 1
+        corner_embedding[:, 1, :] += self.point_embeddings[1].weight  # box corner 2
+
+        box_embedding = corner_embedding.sum(dim=1)  # [N, 4096]
+        desired_N = 3
+        if box_embedding.shape[0] < desired_N:
+            no_box_embedding = self.no_box_embedding.weight  # [1, 4096]
+            no_box_embedding = no_box_embedding.repeat(desired_N - box_embedding.shape[0], 1)  # [M, 4096]
+            # Repeat the same corner embedding for the rest of the boxes
+            box_embedding = torch.cat([box_embedding, no_box_embedding], dim=0)  # [N, 4096]
+        return box_embedding  # [N, 4096]
 
     def insert_image_embeds(self, examples, labels, image_embeds, prefix_img, prefix_nonimg, img_indicators):
         _bsz, seqlen, _ = examples.shape
         new_examples = []
         new_labels = []
         for i, (example, label) in enumerate(zip(examples, labels)):
-            if img_indicators[i] > 0.:
+            if img_indicators[i] > 0.:  # has image
                 new_example = torch.cat([example[:1], prefix_img, image_embeds[i], example[1:]], 0)
                 new_label = torch.cat(
                     [label[:1], torch.zeros(prefix_img.shape[0] + image_embeds.shape[1]).to(examples.device).type_as(labels), label[1:]])
                 new_example = new_example[:seqlen]
                 new_label = new_label[:seqlen]
-            else:
-                new_example = torch.cat([example[:1], prefix_nonimg, example[1:]], 0)
-                new_label = torch.cat([label[:1], torch.zeros(prefix_nonimg.shape[0]).to(examples.device).type_as(labels), label[1:]])
-                new_example = new_example[:seqlen]
-                new_label = new_label[:seqlen]
+
             new_examples.append(new_example.unsqueeze(0))
             new_labels.append(new_label.unsqueeze(0))
         new_examples = torch.cat(new_examples, 0)
         new_labels = torch.cat(new_labels, 0)
         return new_examples, new_labels
 
-    def forward(self, examples, labels, images=None, prefix_img=None, prefix_nonimg=None, img_indicators=None, boxes=None):
+    def _convert_dtype(self, x):
+        if self.params.precision == 'fp16':
+            return x.half()
+        elif self.params.precision == 'bf16':
+            return x.bfloat16()
+
+    def forward(self, examples, labels, images=None, prefix_img=None, prefix_nonimg=None, img_indicators=None, batch_boxes=None):
 
         # print(images.dtype)
         image_embeds = self.backbone.encode_image(images)
-        if self.params.precision == 'fp16':
-            image_embeds = image_embeds.half()
-        elif self.params.precision == 'bf16':
-            image_embeds = image_embeds.bfloat16()
+        image_embeds = self._convert_dtype(image_embeds)
 
         # box embeddings
-        sparse_embeddings = torch.empty((image_embeds.shape[0], 0, self.params.dim)).to(image_embeds.device)
-        box_embeddings = self._embed_boxes(boxes)
+        if self.has_boxes:
+            box_embeds = []
+            for image_boxes in batch_boxes:
+                box_embed = self._embed_boxes(image_boxes)
+                box_embed = self._convert_dtype(box_embed)  # [3, D]
+                box_embeds.append(box_embed)
+            box_embeds = torch.stack(box_embeds, dim=0)  # [B, 3, D]
 
         if isinstance(img_indicators, list):
             img_indicators = torch.Tensor(img_indicators).to(image_embeds.device).long()
         modality_embed = self.adapter_modality_embedding(img_indicators.unsqueeze(1))
-        if self.params.precision == 'fp16':
-            modality_embed = modality_embed.half()
-        elif self.params.precision == 'bf16':
-            modality_embed = modality_embed.bfloat16()
+        modality_embed = self._convert_dtype(modality_embed)
 
         image_embeds = self.adapter_proj(image_embeds)
-
         _bsz, seqlen = examples.shape
 
         examples = self.tok_embeddings(examples)
         prefix_img = self.tok_embeddings(prefix_img.unsqueeze(0)).squeeze(0)
         prefix_nonimg = self.tok_embeddings(prefix_nonimg.unsqueeze(0)).squeeze(0)
 
-        h, labels = self.insert_image_embeds(examples, labels, image_embeds, prefix_img, prefix_nonimg, img_indicators)
+        h, labels = self.insert_image_embeds(examples, labels, image_embeds, prefix_img, prefix_nonimg, img_indicators, box_embeds)
 
         h = torch.cat([modality_embed, h], 1)[:, :seqlen]
         modality_labels = torch.zeros(_bsz, 1).to(labels.device).type_as(labels)
