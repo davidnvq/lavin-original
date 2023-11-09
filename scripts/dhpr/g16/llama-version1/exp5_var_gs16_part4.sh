@@ -3,9 +3,9 @@
 #$-cwd
 #$-ac d=none
 #$-j y
-#$-o $HOME/log/exp5_var_gs32_attn_has_box
+#$-o $HOME/log/exp5_var_gtn32_attn_has_box
 #$ -N "exp5-2"
-#$-jc gs-container_g16.24h
+#$-jc gtn-container_g4.24h
 
 # For internet connection
 export MY_PROXY_URL="http://10.1.10.1:8080/"
@@ -23,13 +23,13 @@ conda activate lavin-torch2.1
 
 
 export EXPNAME="exp5_var_gs32_boxadapter_fixed"
-export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15
-torchrun --nproc_per_node 16 --master_port 13320 train_dhpr.py \
+export CUDA_VISIBLE_DEVICES=0,1,2,3
+torchrun --nproc_per_node 4 --master_port 13360 train_dhpr.py \
     --wandb_enable \
     --llm_model 7B \
     --output_dir ./outputs/${EXPNAME} \
-    --batch_size 1 \
-    --accum_iter 2 \
+    --batch_size 2 \
+    --accum_iter 4 \
     --visual_adapter_type router_block \
     --has_boxes \
     --adapter_type adapter_box \
@@ -37,13 +37,13 @@ torchrun --nproc_per_node 16 --master_port 13320 train_dhpr.py \
 
 
 export EXPNAME="exp5_var_gs32_boxadapter_fixed_noindicator"
-export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15
-torchrun --nproc_per_node 16 --master_port 13320 train_dhpr.py \
+export CUDA_VISIBLE_DEVICES=0,1,2,3
+torchrun --nproc_per_node 4 --master_port 13240 train_dhpr.py \
     --wandb_enable \
     --llm_model 7B \
     --output_dir ./outputs/${EXPNAME} \
-    --batch_size 1 \
-    --accum_iter 2 \
+    --batch_size 2 \
+    --accum_iter 4 \
     --visual_adapter_type router_block \
     --has_boxes \
     --adapter_type adapter_box \
@@ -52,13 +52,13 @@ torchrun --nproc_per_node 16 --master_port 13320 train_dhpr.py \
 
 
 export EXPNAME="exp5_var_gs16_boxadapter_fixed"
-export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15
-torchrun --nproc_per_node 16 --master_port 13320 train_dhpr.py \
+export CUDA_VISIBLE_DEVICES=0,1,2,3
+torchrun --nproc_per_node 4 --master_port 11320 train_dhpr.py \
     --wandb_enable \
     --llm_model 7B \
     --output_dir ./outputs/${EXPNAME} \
-    --batch_size 1 \
-    --accum_iter 1 \
+    --batch_size 2 \
+    --accum_iter 2 \
     --visual_adapter_type router_block \
     --has_boxes \
     --adapter_type adapter_box \
@@ -66,13 +66,13 @@ torchrun --nproc_per_node 16 --master_port 13320 train_dhpr.py \
 
 
 export EXPNAME="exp5_var_gs16_boxadapter_fixed_noindicator"
-export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15
-torchrun --nproc_per_node 16 --master_port 13320 train_dhpr.py \
+export CUDA_VISIBLE_DEVICES=0,1,2,3
+torchrun --nproc_per_node 4 --master_port 13393 train_dhpr.py \
     --wandb_enable \
     --llm_model 7B \
     --output_dir ./outputs/${EXPNAME} \
-    --batch_size 1 \
-    --accum_iter 1 \
+    --batch_size 2 \
+    --accum_iter 2 \
     --visual_adapter_type router_block \
     --has_boxes \
     --adapter_type adapter_box \
