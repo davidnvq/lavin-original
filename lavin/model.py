@@ -304,13 +304,15 @@ class Transformer(nn.Module):
 
         for i, (example, label) in enumerate(zip(examples, labels)):
             # add box to inputs
-            nontext_example = [prefix_img, image_embeds[i]]
-            nontext_example = [box_embeds[i]] + nontext_example if box_embeds is not None else nontext_example
-            new_example = torch.cat([example[:1], *nontext_example, example[1:]], 0)  # first token is [BOS]
+            other_tokens = [prefix_img, image_embeds[i]]
+            if box_embeds is not None:
+                other_tokens = [box_embeds[i]] + other_tokens
+            other_tokens = torch.cat(other_tokens, dim=0)
+            new_example = torch.cat([example[:1], other_tokens, example[1:]], dim=0)  # first token is [BOS]
 
             # add box to label
-            nontext_label = torch.zeros(prefix_img.shape[0] + image_embeds.shape[1] + box_embeds.shape[1] if box_embeds is not None else 0)
-            new_label = torch.cat([label[:1], nontext_label.to(examples.device).type_as(labels), label[1:]])
+            other_label = torch.zeros(other_tokens.shape[0]).to(label.device).type_as(label)
+            new_label = torch.cat([label[:1], other_label, label[1:]])
 
             new_example = new_example[:seqlen]
             new_label = new_label[:seqlen]
@@ -379,6 +381,6 @@ class Transformer(nn.Module):
         output = self.output(h)
         output = output[:, :-1, :].reshape(-1, self.vocab_size)
         labels = labels[:, 1:].flatten()
-
+        # torch.isfinite(logits).all()
         c_loss = self.criterion(output, labels)
         return c_loss
