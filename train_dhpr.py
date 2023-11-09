@@ -97,7 +97,7 @@ def init_args(**kwargs):
 
 def main(**kwargs):
     args = init_args(**kwargs)
-    torch.autograd.set_detect_anomaly(True)
+    # torch.autograd.set_detect_anomaly(True)
 
     misc.init_distributed_mode(args)
     if misc.is_main_process() and args.wandb_enable:
